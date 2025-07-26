@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosel: A Wine Master's Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-content {
+            max-height: 80vh;
+        }
+        .prose-purple a {
+            color: #9333ea;
+        }
+        .prose-purple a:hover {
+            color: #7e22ce;
+        }
+        .timeline-item.selected {
+            background-color: #6b21a8;
+            color: white;
+        }
+        .flashcard-container {
+            perspective: 1000px;
+        }
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            border-radius: 0.5rem;
+        }
+        .flashcard-front {
+            background-color: #374151; /* gray-700 */
+        }
+        .flashcard-back {
+            background-color: #4b5563; /* gray-600 */
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div id="main-menu" class="min-h-screen flex flex-col items-center justify-center p-4">
+        <h1 class="text-4xl md:text-5xl font-bold text-purple-400 mb-2 text-center">Mosel</h1>
+        <h2 class="text-2xl md:text-3xl font-semibold mb-8 text-center">A Wine Master's Challenge</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-4xl mb-8">
+            <button data-module="historian" class="module-btn bg-gray-800 p-6 rounded-lg hover:bg-purple-700 transition-colors duration-300">
+                <h3 class="text-xl font-bold mb-2">The Historian's Scroll</h3>
+                <p class="text-gray-400">Order the key events that shaped the Mosel.</p>
+            </button>
+            <button data-module="terroir" class="module-btn bg-gray-800 p-6 rounded-lg hover:bg-purple-700 transition-colors duration-300">
+                <h3 class="text-xl font-bold mb-2">The Terroir Architect</h3>
+                <p class="text-gray-400">Master the soils, climate, and geography.</p>
+            </button>
+            <button data-module="ampelographer" class="module-btn bg-gray-800 p-6 rounded-lg hover:bg-purple-700 transition-colors duration-300">
+                <h3 class="text-xl font-bold mb-2">The Ampelographer's Challenge</h3>
+                <p class="text-gray-400">Identify the region's key grape varieties and vineyard practices.</p>
+            </button>
+            <button data-module="lawmaker" class="module-btn bg-gray-800 p-6 rounded-lg hover:bg-purple-700 transition-colors duration-300">
+                <h3 class="text-xl font-bold mb-2">The Lawmaker's Desk</h3>
+                <p class="text-gray-400">Navigate the complexities of German wine law and classifications.</p>
+            </button>
+            <button data-module="gastronome" class="module-btn bg-gray-800 p-6 rounded-lg hover:bg-purple-700 transition-colors duration-300">
+                <h3 class="text-xl font-bold mb-2">The Gastronome's Table</h3>
+                <p class="text-gray-400">Explore classic food pairings and local cuisine.</p>
+            </button>
+            <button data-module="critic" class="module-btn bg-gray-800 p-6 rounded-lg hover:bg-purple-700 transition-colors duration-300">
+                <h3 class="text-xl font-bold mb-2">The Critic's Corner</h3>
+                <p class="text-gray-400">Analyze vintages and iconic producers.</p>
+            </button>
+        </div>
+
+        <div class="w-full max-w-4xl">
+             <button data-module="flashcard" class="module-btn bg-gray-800 p-6 rounded-lg hover:bg-purple-700 transition-colors duration-300 w-full">
+                <h3 class="text-xl font-bold mb-2">Flashcard Study</h3>
+                <p class="text-gray-400">Build your knowledge with targeted review.</p>
+            </button>
+        </div>
+    	
+        <button id="ai-settings-btn" class="mt-8 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+            ⚙️ AI Settings
+        </button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="hidden min-h-screen flex flex-col items-center justify-center p-4">
+        <!-- Content will be injected here -->
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div id="modal-content-wrapper" class="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl modal-content overflow-y-auto">
+            <!-- Modal content will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        // This object contains the questions for the quiz modules
+        const gameData = {
+            historian: {
+                title: "The Historian's Scroll",
+                instructions: "For each of the 5 challenges, arrange the historical events in chronological order from earliest to latest. Tap an event to add it to your timeline, then submit your answer.",
+                questions: [
+                    {
+                        question: "Arrange these foundational events in the Mosel's history.",
+                        events: [
+                            { text: "The Romans introduce viticulture to the Mosel valley.", date: 150 }, // c. 2nd Century CE
+                            { text: "The Neumagen wine ship funerary monument is created, attesting to a flourishing wine culture.", date: 220 }, // c. 220 CE
+                            { text: "St. Maximin's Abbey in Trier is recorded as a significant owner of Riesling vineyards.", date: 1695 },
+                            { text: "Prince-elector Clemens Wenceslaus decrees that all vines must be replaced with Riesling.", date: 1786 },
+                            { text: "The Mosel region comes under Prussian rule after the Congress of Vienna.", date: 1815 },
+                        ]
+                    },
+                    {
+                        question: "Order the key events of the 19th-century 'Golden Age' and its codification.",
+                        events: [
+                            { text: "The Congress of Vienna places the Mosel under Prussian rule, beginning a period of prosperity.", date: 1815 },
+                            { text: "The Prussian government commissions the Saar und Mosel Weinbau-Karte for tax purposes.", date: 1868 },
+                            { text: "The Prussian vineyard classification map is published, codifying a terroir hierarchy based on economic value.", date: 1868 },
+                            { text: "Phylloxera is first recorded in Germany, beginning a long-term threat to the vineyards.", date: 1872 },
+                            { text: "Top Mosel Rieslings fetch higher prices at auction than the finest wines of Bordeaux.", date: 1890 }, // Representative of the late 19th century
+                        ]
+                    },
+                    {
+                        question: "Place these pivotal 20th-century events in the correct chronological order.",
+                        events: [
+                            { text: "The VDP (Verband Deutscher Prädikatsweingüter) is founded as the VDNV.", date: 1910 },
+                            { text: "The rise of brands like Blue Nun begins, shifting focus towards quantity over quality.", date: 1950 }, // Post-war economic boom
+                            { text: "The landmark German Wine Law (Weingesetz) is enacted, establishing a quality system based on must weight.", date: 1971 },
+                            { text: "The VDP begins developing its own internal, terroir-based classification system in reaction to the 1971 law.", date: 1984 },
+                            { text: "The VDP officially launches its formal, three-tier vineyard classification system.", date: 2002 },
+                        ]
+                    },
+                    {
+                        question: "Arrange these key moments related to the Mosel's legal and classification history.",
+                        events: [
+                            { text: "The Prussian government creates a detailed vineyard classification map for taxation.", date: 1868 },
+                            { text: "The 1971 Weingesetz legally erases the distinction between Einzellagen and Grosslagen of the same name.", date: 1971 },
+                            { text: "The VDP is rebranded and refocuses on promoting higher quality standards than the new law demands.", date: 1971 },
+                            { text: "The VDP introduces its modern four-tiered quality pyramid, including Grosse Lage and Erste Lage.", date: 2012 },
+                            { text: "The EU approves Germany's first three single-vineyard PDOs for parcels within the Uhlen vineyard.", date: 2018 },
+                        ]
+                    },
+                ]
+            },
+            terroir: {
+                title: "The Terroir Architect",
+                instructions: "Answer 10 multiple-choice questions about the geology, geography, and climate of the Mosel.",
+                questions: [
+                    { q: "What is the predominant parent rock and soil type throughout the Middle Mosel, Saar, and Ruwer?", a: "Blue Devonian Slate", o: ["Red Slate (Rotschiefer)", "Shell-Limestone (Muschelkalk)", "Volcanic Tuff"] },
+                    { q: "The famous vineyards surrounding Ürzig and Erden are known for what distinct soil type?", a: "Red Slate (Rotschiefer)", o: ["Blue Devonian Slate", "Quartzite", "Loess"] },
+                    { q: "What is the primary viticultural benefit of the Mosel's slate soils?", a: "Excellent heat absorption and retention", o: ["High water-holding capacity", "High pH and calcium content", "Rich in organic nutrients"] },
+                    { q: "The Bremmer Calmont, with an incline up to 68 degrees, is recognized as what?", a: "The steepest vineyard in the world", o: ["The highest elevation vineyard in Germany", "The oldest vineyard in the Mosel", "The largest single vineyard in the Mosel"] },
+                    { q: "According to the Winkler Index, the Mosel's GDD of 850-950°C places it in which climate category?", a: "Region Ia", o: ["Region Ib", "Region II", "Region III"] },
+                    { q: "What is the most significant and recurring viticultural threat to yields in the Mosel?", a: "Spring Frost", o: ["Drought", "Hail", "Excessive heat"] },
+                    { q: "The central and most famous section of the Mosel, home to villages like Bernkastel and Wehlen, is which Bereich?", a: "Bernkastel (Mittelmosel)", o: ["Burg Cochem (Terrassenmosel)", "Saar", "Obermosel"] },
+                    { q: "The geology of the Obermosel (Upper Mosel) is distinct from the Middle Mosel, being composed primarily of what?", a: "Shell-Limestone (Muschelkalk)", o: ["Blue Devonian Slate", "Granite", "Sandstone"] },
+                    { q: "What is the primary function of the Mosel River in the region's climate?", a: "It reflects sunlight and radiates heat, moderating temperatures.", o: ["It significantly increases rainfall.", "It creates strong, drying winds.", "It cools the vineyards during the day."] },
+                    { q: "The soils of the Mosel are notably free of what mineral component?", a: "Lime", o: ["Iron", "Potassium", "Magnesium"] },
+                    { q: "Red Slate (Rotschiefer) gets its characteristic color from a higher concentration of what?", a: "Iron Oxide (Hematite)", o: ["Potassium", "Magnesium", "Copper"] },
+                    { q: "Wines grown on Blue Devonian Slate are typically described as having what kind of minerality?", a: "Flint or wet stone", o: ["Saline or oyster shell", "Chalky or limestone", "Graphite or pencil lead"] },
+                    { q: "Which Bereich is also known as the 'Terrassenmosel' due to its dramatic, terraced vineyards?", a: "Burg Cochem", o: ["Bernkastel", "Saar", "Ruwertal"] },
+                    { q: "What is the approximate latitude of the Mosel wine region?", a: "50° North", o: ["45° North", "55° North", "48° North"] },
+                    { q: "What is the average annual temperature in the Mosel, placing it at the cool limit for viticulture?", a: "Around 10°C (50°F)", o: ["Around 15°C (59°F)", "Around 12°C (54°F)", "Around 8°C (46°F)"] },
+                    { q: "The combination of steep slopes and rainfall makes what a constant viticultural challenge?", a: "Soil erosion", o: ["Drought stress", "Poor drainage", "Sunburn"] },
+                    { q: "Which tributary of the Mosel is known for producing wines of particular delicacy and searing acidity due to its cool climate?", a: "Saar", o: ["Rhine", "Nahe", "Main"] },
+                    { q: "The Mosel river flows into which other major German river at the city of Koblenz?", a: "Rhine", o: ["Danube", "Elbe", "Main"] },
+                    { q: "What is the primary reason that south-facing slopes are essential for quality viticulture in the Mosel?", a: "They maximize exposure to sunlight for ripening.", o: ["They are protected from river flooding.", "They have deeper topsoil.", "They are less prone to fungal disease."] },
+                    { q: "The parent rock of the Mosel's slate was formed from ocean sediments during which geological period?", a: "Devonian", o: ["Jurassic", "Cretaceous", "Triassic"] },
+                    { q: "Wines grown on Red Slate, compared to Blue Slate, tend to be:", a: "Richer, more powerful, and broader on the palate", o: ["More filigreed, delicate, and floral", "Higher in acidity and lower in alcohol", "Lighter in color with citrus notes"] },
+                    { q: "Which of these is NOT one of the six official Bereiche of the Mosel?", a: "Mittelrhein", o: ["Saar", "Ruwertal", "Burg Cochem"] },
+                    { q: "The excellent drainage of slate soils forces vines to do what?", a: "Develop deep root systems to search for water", o: ["Produce more leaves for photosynthesis", "Ripen their grapes much faster", "Develop resistance to frost"] },
+                    { q: "The increasing frequency of hot, dry summers due to climate change has led to the legal, but still uncommon, practice of what?", a: "Supplemental irrigation", o: ["Mandatory cover cropping", "Shade cloth installation", "Early harvesting for all wines"] },
+                    { q: "Which famous vineyard, owned as a monopole by Karthäuserhof, is located in the Ruwertal?", a: "Eitelsbacher Karthäuserhofberg", o: ["Maximin Grünhäuser Abtsberg", "Scharzhofberger", "Wehlener Sonnenuhr"] },
+                    { q: "What is the approximate growing season rainfall (April-October) in the Mosel?", a: "425-455 mm", o: ["200-250 mm", "600-650 mm", "100-150 mm"] },
+                    { q: "The city of Trier, the oldest in Germany, is located at the confluence of which two Mosel sub-regions?", a: "Saar and Ruwer", o: ["Bernkastel and Burg Cochem", "Obermosel and Saar", "Ruwertal and Bernkastel"] },
+                    { q: "The high humidity generated by the river, combined with rainfall, creates a high risk for what?", a: "Fungal diseases like mildew", o: ["Spring frost", "Soil compaction", "Insect infestations"] },
+                    { q: "The Hunsrück hills and the Eifel Mountains border the Mosel valley, providing what?", a: "Protection from cold air drafts", o: ["A source of volcanic soil", "A rain shadow effect", "Cooling winds that delay ripening"] },
+                    { q: "What is the GDD for Trier, as calculated by the Winkler Index?", a: "943.8°C", o: ["852.0°C", "1100.5°C", "750.2°C"] },
+                    { q: "Which Bereich is the southernmost section bordering Luxembourg, with different geology?", a: "Obermosel", o: ["Moseltor", "Saar", "Bernkastel"] },
+                    { q: "The maintenance of dry-stone terrace walls (Mauern) is essential for what purpose?", a: "Stabilizing the steepest slopes and preventing erosion", o: ["Marking property boundaries", "Improving air circulation", "Reflecting heat onto the vines"] },
+                    { q: "The cool climate and long growing season in the Mosel are ideal for developing complex aromas while retaining what?", a: "High levels of acidity", o: ["High potential alcohol", "Deep color in the skins", "Thick skins resistant to rot"] },
+                    { q: "Which famous vineyard is NOT located in the Bernkastel (Mittelmosel) Bereich?", a: "Scharzhofberger", o: ["Bernkasteler Doctor", "Wehlener Sonnenuhr", "Ürziger Würzgarten"] },
+                    { q: "The process of carrying eroded slate soil back up the slopes by hand is a major part of what?", a: "Year-round vineyard maintenance", o: ["Harvest", "Pruning", "Preparing for frost"] },
+                    { q: "Which village is home to the famous 'sundial' (Sonnenuhr) vineyard?", a: "Wehlen", o: ["Piesport", "Erden", "Trier"] },
+                    { q: "The geological foundation of the Mosel was formed by the tectonic collision of which two ancient continents?", a: "Gondwana and Laurussia", o: ["Pangaea and Panthalassa", "Eurasia and Africa", "North America and South America"] },
+                    { q: "Which of these is a key viticultural characteristic of the Saar sub-region?", a: "It is one of the coolest areas, producing austere, high-acid wines", o: ["It is the warmest area, producing powerful, ripe wines", "It has deep, fertile loess soils", "It is primarily planted to Spätburgunder"] },
+                    { q: "The 'Terrassenmosel' is another name for which Bereich?", a: "Burg Cochem", o: ["Bernkastel", "Saar", "Ruwertal"] },
+                    { q: "What is the primary reason that budbreak is advancing faster than the average date of the last frost, increasing risk?", a: "Climate Change", o: ["New Clonal Selections", "Changes in Pruning Techniques", "Soil Depletion"] },
+                    { q: "Which famous vineyard is a monopole of the von Schubert family at Maximin Grünhaus?", a: "Abtsberg", o: ["Karthäuserhofberg", "Josephshöfer", "Scharzhofberger"] },
+                    { q: "The Mosel's thin, stony soils have what effect on water?", a: "They provide excellent drainage", o: ["They retain water for long periods", "They prevent roots from accessing water", "They cause frequent waterlogging"] },
+                    { q: "Which village is renowned for its 'spice garden' vineyard, Würzgarten?", a: "Ürzig", o: ["Wehlen", "Graach", "Piesport"] },
+                    { q: "The cool climate of the Mosel means the harvest often extends into which month?", a: "November", o: ["August", "September", "July"] },
+                    { q: "What is the approximate length of the Mosel river's path through Germany?", a: "Over 200 kilometers", o: ["About 100 kilometers", "About 50 kilometers", "Over 500 kilometers"] },
+                    { q: "The famous Bernkasteler Doctor vineyard is located in which Bereich?", a: "Bernkastel", o: ["Saar", "Ruwertal", "Burg Cochem"] },
+                    { q: "Which viticultural risk is particularly acute for organic and biodynamic producers who cannot use systemic fungicides?", a: "Fungal disease pressure", o: ["Spring frost", "Soil erosion", "Drought"] },
+                    { q: "The heat retention of slate is most critical during which part of the day?", a: "At night, when it radiates stored heat back to the vines", o: ["In the morning, when it warms the soil quickly", "At midday, when it reflects sunlight", "During rainfall, when it prevents cooling"] },
+                    { q: "Which is the smallest of the main Mosel tributaries, known for wines of great finesse?", a: "Ruwer", o: ["Saar", "Rhine", "Nahe"] },
+                    { q: "The vast majority of the Mosel's most highly-regarded vineyard sites are planted on what soil type?", a: "Devonian Slate", o: ["Limestone", "Clay", "Sand"] },
+                ]
+            },
+            ampelographer: {
+                title: "The Ampelographer's Challenge",
+                instructions: "Answer 10 multiple-choice questions about the key grape varieties and vineyard practices of the Mosel. After a correct answer, you may have the option to generate an AI profile.",
+                questions: [
+                    { q: "Riesling is a natural crossing of Gouais Blanc and a second parent, which was a cross between a wild vine and which other variety?", a: "Traminer", o: ["Pinot", "Elbling", "Silvaner"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "What is the traditional vine training method used on the most precipitous slopes of the Mosel?", a: "Single-post system (Moselpfahlerziehung)", o: ["Guyot", "Cordon", "Gobelet"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "What is the maximum yield permitted by the VDP for a wine from a VDP.Grosse Lage® vineyard?", a: "50 hl/ha", o: ["75 hl/ha", "60 hl/ha", "90 hl/ha"], subjectType: 'viticulture', subjectName: 'VDP Yields' },
+                    { q: "Riesling's phenology is critical for its success in the Mosel. It is known to be:", a: "Late-budding and late-ripening", o: ["Early-budding and early-ripening", "Late-budding and early-ripening", "Early-budding and late-ripening"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "The traditional single-post training system requires the canes to be tied into what characteristic shape?", a: "A heart or a loop", o: ["A vertical spiral", "A horizontal T-shape", "A hanging curtain"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "What percentage of the Mosel's vineyard area is planted to Riesling?", a: "62%", o: ["85%", "50%", "75%"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "The high planting densities on the steepest slopes, often exceeding 8,000 vines/ha, serve what primary purpose?", a: "To encourage root competition and control vigor", o: ["To make mechanical harvesting easier", "To reduce the risk of frost", "To increase the yield per vine"], subjectType: 'viticulture', subjectName: 'Planting Density' },
+                    { q: "The thin skins of the Riesling grape make it highly susceptible to what?", a: "Botrytis cinerea (noble rot)", o: ["Drought", "Winter frost", "Coulure"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "What is the second most planted grape variety in the Mosel?", a: "Müller-Thurgau", o: ["Elbling", "Spätburgunder", "Weissburgunder"], subjectType: 'grape', subjectName: 'Müller-Thurgau' },
+                    { q: "The labor required for the single-post system is estimated to be how much greater than in a flat, mechanized vineyard?", a: "Up to seven times greater", o: ["Twice as great", "Three times greater", "Equal"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "Which grape variety is dominant in the Obermosel, where soils are calcareous?", a: "Elbling", o: ["Riesling", "Müller-Thurgau", "Spätburgunder"], subjectType: 'grape', subjectName: 'Elbling' },
+                    { q: "What is the primary reason the single-post system is used?", a: "It is a necessary adaptation to the extreme, unwired terrain", o: ["It produces higher yields than other systems", "It is a modern, mechanized system", "It is required by law for all vineyards"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "Which of these is a key criterion for modern German Riesling clonal selection?", a: "Looser bunches to reduce rot susceptibility", o: ["Earlier budding to extend the season", "Thicker skins for color extraction", "Higher sugar accumulation"], subjectType: 'clone', subjectName: 'Riesling Clones' },
+                    { q: "What is Germany's most planted red grape variety, which accounts for 4.6% of Mosel plantings?", a: "Spätburgunder (Pinot Noir)", o: ["Dornfelder", "Lemberger", "Trollinger"], subjectType: 'grape', subjectName: 'Spätburgunder' },
+                    { q: "The VDP's strict yield limits are a self-imposed standard designed to ensure what?", a: "Greater flavor intensity and complexity", o: ["Compliance with EU regulations", "Higher alcohol levels", "Larger harvest volumes"], subjectType: 'viticulture', subjectName: 'VDP Yields' },
+                    { q: "Riesling's late-budding nature provides a degree of natural protection against what regional hazard?", a: "Late spring frosts", o: ["Summer droughts", "Autumn rains", "Powdery mildew"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "Historically, why was irrigation forbidden for quality wine production in Germany?", a: "It was believed terroir was linked to survival on natural rainfall", o: ["It was too expensive to implement", "It diluted the flavor of the grapes", "There was not enough available water"], subjectType: 'viticulture', subjectName: 'Irrigation' },
+                    { q: "Müller-Thurgau is a crossing of Riesling and what other grape?", a: "Madeleine Royale", o: ["Silvaner", "Chasselas", "Gouais Blanc"], subjectType: 'grape', subjectName: 'Müller-Thurgau' },
+                    { q: "What is the maximum yield permitted by the VDP for VDP.Erste Lage® wines?", a: "60 hl/ha", o: ["50 hl/ha", "75 hl/ha", "80 hl/ha"], subjectType: 'viticulture', subjectName: 'VDP Yields' },
+                    { q: "The hardy wood of the Riesling vine gives it good resistance to what?", a: "Winter frost", o: ["Pierce's Disease", "Phylloxera", "Downy Mildew"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "Which task is NOT part of the hand-labor required by the single-post system?", a: "Mechanical pre-pruning", o: ["Tying canes", "Leaf-plucking", "Harvesting"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "For VDP.Grosse Lage® wines from the Mosel, which is the only permitted white grape?", a: "Riesling", o: ["Weissburgunder", "Müller-Thurgau", "Elbling"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "The long, cool growing season of the Mosel allows Riesling to achieve full physiological ripeness while retaining what?", a: "High acidity", o: ["Low sugar levels", "Thick skins", "A deep golden color"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "What is the primary reason that most Mosel vines are grafted, despite some phylloxera resistance from the soil?", a: "It is generally illegal to plant ungrafted vines", o: ["Grafted vines produce higher yields", "Grafted vines are more frost-resistant", "Grafted vines have deeper roots"], subjectType: 'viticulture', subjectName: 'Grafting' },
+                    { q: "The Weis 21 (or 21B) clone is a widely planted Riesling selection originating from where?", a: "The Mosel", o: ["Geisenheim", "Alsace", "Austria"], subjectType: 'clone', subjectName: 'Riesling Clones' },
+                    { q: "What is the maximum yield permitted by the VDP for VDP.Ortswein?", a: "75 hl/ha", o: ["50 hl/ha", "60 hl/ha", "90 hl/ha"], subjectType: 'viticulture', subjectName: 'VDP Yields' },
+                    { q: "The phenomenon of 'noble rot' is essential for producing which styles of wine?", a: "Beerenauslese and Trockenbeerenauslese", o: ["Kabinett and Spätlese", "Trocken and Feinherb", "Sekt and Eiswein"], subjectType: 'viticulture', subjectName: 'Noble Rot' },
+                    { q: "Which grape variety is the third most planted in the Mosel, used for simple whites and Sekt?", a: "Elbling", o: ["Weissburgunder", "Müller-Thurgau", "Kerner"], subjectType: 'grape', subjectName: 'Elbling' },
+                    { q: "The German Wine Law does not mandate specific planting densities, making it a decision based on what?", a: "Practicality of the training system and topography", o: ["The grape variety being planted", "The desired wine style", "The age of the vineyard"], subjectType: 'viticulture', subjectName: 'Planting Density' },
+                    { q: "Riesling's susceptibility to flowering problems (coulure) is a key selection criterion for what?", a: "Clonal selection", o: ["Rootstock choice", "Pruning method", "Harvest timing"], subjectType: 'clone', subjectName: 'Riesling Clones' },
+                    { q: "The 2021 German Wine Law introduced a maximum yield of 50 hl/ha for which category of wine?", a: "Grosses Gewächs", o: ["Kabinett", "Qualitätswein", "Landwein"], subjectType: 'viticulture', subjectName: 'German Wine Law Yields' },
+                    { q: "Which of these is NOT a traditional grape variety of the Mosel?", a: "Chardonnay", o: ["Riesling", "Elbling", "Spätburgunder"], subjectType: 'grape', subjectName: 'Mosel Grape Varieties' },
+                    { q: "The single-post system allows workers to move freely on the slopes without being impeded by what?", a: "Trellis wires", o: ["Cover crops", "Irrigation lines", "Frost fans"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "The extended hang time for Riesling in the Mosel is crucial for developing what?", a: "Deep aromatic complexity", o: ["High alcohol content", "Low acidity", "Resistance to rot"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "For VDP.Grosse Lage® wines from the Mosel, which is the only permitted red grape?", a: "Spätburgunder", o: ["Dornfelder", "Lemberger", "Regent"], subjectType: 'grape', subjectName: 'Spätburgunder' },
+                    { q: "The nutrient-poor slate soils can lead to what deficiency in the grape must?", a: "Nitrogen", o: ["Potassium", "Calcium", "Magnesium"], subjectType: 'viticulture', subjectName: 'Slate Soils' },
+                    { q: "What percentage of Mosel vineyards are planted to white grape varieties?", a: "91%", o: ["75%", "95%", "80%"], subjectType: 'viticulture', subjectName: 'Mosel Grape Varieties' },
+                    { q: "The need for chaptalization has diminished due to consistently riper grapes, a result of what?", a: "Climate change", o: ["New irrigation techniques", "Higher planting densities", "The single-post system"], subjectType: 'viticulture', subjectName: 'Chaptalization' },
+                    { q: "Which German research institution is a pioneer in Riesling clonal selection?", a: "Geisenheim University", o: ["University of Trier", "Heidelberg University", "Max Planck Institute"], subjectType: 'clone', subjectName: 'Riesling Clones' },
+                    { q: "What is the fourth most planted grape in the Mosel?", a: "Spätburgunder (Pinot Noir)", o: ["Weissburgunder (Pinot Blanc)", "Elbling", "Dornfelder"], subjectType: 'grape', subjectName: 'Spätburgunder' },
+                    { q: "The traditional single-post system is a form of what?", a: "Heritage agriculture", o: ["Modern mechanization", "Organic farming", "Biodynamic viticulture"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "Riesling's genetic parent, Gouais Blanc, is also known by what name in Germany?", a: "Heunisch Weiss", o: ["Gutedel", "Weissburgunder", "Elbling"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "What percentage of Mosel vineyards are planted to red grape varieties?", a: "9%", o: ["20%", "5%", "15%"], subjectType: 'viticulture', subjectName: 'Mosel Grape Varieties' },
+                    { q: "The VDP requires its members to cultivate a minimum of 80% of what?", a: "Traditional grape varieties", o: ["Riesling", "High-yielding crossings", "International varieties"], subjectType: 'viticulture', subjectName: 'VDP Regulations' },
+                    { q: "What is the fifth most planted grape in the Mosel?", a: "Weissburgunder (Pinot Blanc)", o: ["Kerner", "Dornfelder", "Elbling"], subjectType: 'grape', subjectName: 'Weissburgunder' },
+                    { q: "The term 'Alte Reben' on a label indicates what?", a: "Old vines", o: ["Single vineyard", "Organic farming", "Unfiltered wine"], subjectType: 'viticulture', subjectName: 'Alte Reben' },
+                    { q: "The slow ripening of Riesling in the Mosel is key to balancing its high acidity with what?", a: "Aromatic complexity", o: ["Tannin structure", "Color intensity", "Alcoholic strength"], subjectType: 'grape', subjectName: 'Riesling' },
+                    { q: "Which is NOT a primary goal of Riesling clonal selection?", a: "Increasing berry size", o: ["Resistance to flowering problems", "Looser bunch structure", "Specific aromatic profiles"], subjectType: 'clone', subjectName: 'Riesling Clones' },
+                    { q: "The practice of tying two canes to the stake is part of which system?", a: "Single-post system", o: ["Guyot system", "Lyre system", "Pergola system"], subjectType: 'viticulture', subjectName: 'Single-Post Training System' },
+                    { q: "The success of the Mosel is intrinsically linked to the perfect suitability of which grape to its terroir?", a: "Riesling", o: ["Chardonnay", "Sauvignon Blanc", "Pinot Noir"], subjectType: 'grape', subjectName: 'Riesling' },
+                ]
+            },
+            lawmaker: {
+                title: "The Lawmaker's Desk",
+                instructions: "Answer 10 multiple-choice questions about the appellation laws and winemaking regulations of the Mosel.",
+                questions: [
+                    { q: "Under the 1971 German Wine Law, what is the primary basis for the Prädikat system?", a: "Must weight (sugar content) of the grapes at harvest", o: ["Geographical origin of the grapes", "Minimum aging requirements", "Yield per hectare"] },
+                    { q: "What is the term for a collective vineyard site that can encompass multiple single vineyards, often leading to consumer confusion?", a: "Grosslage", o: ["Einzellage", "Bereich", "Anbaugebiet"] },
+                    { q: "Chaptalization (the addition of sugar to must) is strictly forbidden for which category of German wine?", a: "Prädikatswein", o: ["Qualitätswein", "Landwein", "Deutscher Wein"] },
+                    { q: "What is the lightest style in the Prädikat system, made from fully ripe grapes?", a: "Kabinett", o: ["Spätlese", "Trocken", "Feinherb"] },
+                    { q: "What does the VDP acronym 'GG' stand for on a wine label?", a: "Grosses Gewächs", o: ["Grosse Güte", "Garantiert Gut", "Geisenheim Gewächs"] },
+                    { q: "What is the minimum must weight in degrees Oechsle for a Mosel Riesling to be classified as Spätlese?", a: "76 °Oe", o: ["70 °Oe", "83 °Oe", "110 °Oe"] },
+                    { q: "A dry wine from a VDP.Grosse Lage® vineyard is known as what?", a: "Grosses Gewächs (GG)", o: ["Erste Lage Trocken", "Auslese Trocken", "Selection"] },
+                    { q: "What is the official quality control test number required on every Qualitätswein and Prädikatswein label?", a: "A.P. Nr. (Amtliche Prüfungsnummer)", o: ["VDP Nr.", "L. Nr.", "QbA Nr."] },
+                    { q: "Which of these is NOT one of the six Prädikat levels?", a: "Feinherb", o: ["Auslese", "Beerenauslese", "Eiswein"] },
+                    { q: "In the VDP classification, which tier is equivalent to a 'premier cru' vineyard?", a: "VDP.Erste Lage®", o: ["VDP.Grosse Lage®", "VDP.Ortswein", "VDP.Gutswein"] },
+                    { q: "What is the minimum must weight for a Mosel Riesling to qualify as Beerenauslese or Eiswein?", a: "110 °Oe", o: ["83 °Oe", "150 °Oe", "76 °Oe"] },
+                    { q: "The term 'Erzeugerabfüllung' or 'Gutsabfüllung' on a label signifies what?", a: "The wine is estate-bottled", o: ["The wine is from a cooperative", "The wine is unfiltered", "The wine is from old vines"] },
+                    { q: "Legally, a VDP Grosses Gewächs wine is classified as what under German wine law?", a: "Qualitätswein trocken", o: ["Prädikatswein trocken", "Landwein trocken", "Deutscher Wein trocken"] },
+                    { q: "What does the term 'trocken' legally signify on a German wine label?", a: "Dry", o: ["Off-dry", "Sweet", "Sparkling"] },
+                    { q: "The 1971 Wine Law was criticized for legally erasing the distinction between which two types of vineyard sites?", a: "Einzellagen and Grosslagen", o: ["Steep slopes and flat land", "Organic and conventional vineyards", "VDP and non-VDP sites"] },
+                    { q: "What is the highest Prädikat level, made from shriveled, botrytis-affected berries?", a: "Trockenbeerenauslese (TBA)", o: ["Beerenauslese (BA)", "Eiswein", "Auslese Goldkapsel"] },
+                    { q: "In the VDP classification, what is the term for a 'village wine' from traditional vineyards within a village boundary?", a: "VDP.Ortswein", o: ["VDP.Gutswein", "VDP.Erste Lage®", "VDP.Grosse Lage®"] },
+                    { q: "What is the minimum actual alcohol content required for most Prädikat wines like Kabinett and Spätlese?", a: "7.0% ABV", o: ["5.5% ABV", "8.5% ABV", "10.0% ABV"] },
+                    { q: "The VDP's classification system is based on origin and terroir, explicitly modeled on the principles of what?", a: "The 1868 Prussian vineyard maps", o: ["The French AOC system", "The Italian DOCG system", "The 1971 German Wine Law"] },
+                    { q: "What is the term for a single, registered vineyard site, the most specific indication of terroir?", a: "Einzellage", o: ["Grosslage", "Ortsteil", "Gemeinde"] },
+                    { q: "For which Prädikat level must grapes be harvested and pressed while frozen at -7°C or colder?", a: "Eiswein", o: ["Beerenauslese", "Trockenbeerenauslese", "Spätlese"] },
+                    { q: "The VDP logo, a stylized eagle holding a grape cluster, is known as the:", a: "VDP.Adler", o: ["Bundesadler", "Reichsadler", "Traubenadler"] },
+                    { q: "What is the unofficial but widely used term for an off-dry wine, often replacing 'halbtrocken'?", a: "Feinherb", o: ["Lieblich", "Süss", "Trocken"] },
+                    { q: "Which of these is the broadest geographical designation in the German system?", a: "Anbaugebiet", o: ["Bereich", "Grosslage", "Einzellage"] },
+                    { q: "What is the minimum must weight for a Mosel Riesling to be classified as Auslese?", a: "83 °Oe", o: ["76 °Oe", "110 °Oe", "70 °Oe"] },
+                    { q: "The 2021 revision of the German Wine Law began to shift focus towards a more terroir-based model for which category?", a: "Qualitätswein", o: ["Prädikatswein", "Landwein", "Sekt"] },
+                    { q: "What is the term for Germany's highest quality sparkling wine, made by the traditional method on a single estate?", a: "Winzersekt", o: ["Sekt b.A.", "Deutscher Sekt", "Perlwein"] },
+                    { q: "The VDP prohibits its members from using what on their labels?", a: "Grosslagen names", o: ["Prädikat levels", "Village names", "Vineyard names"] },
+                    { q: "What is the minimum must weight for Trockenbeerenauslese (TBA)?", a: "150 °Oe", o: ["110 °Oe", "128 °Oe", "83 °Oe"] },
+                    { q: "The term 'Alte Reben' on a label, while unregulated, implies the wine is made from what?", a: "Old vines", o: ["A single clone", "Organically farmed grapes", "A specific soil type"] },
+                    { q: "In the VDP hierarchy, which is the entry-level tier representing regional wines from an estate's holdings?", a: "VDP.Gutswein", o: ["VDP.Ortswein", "VDP.Erste Lage®", "Qualitätswein"] },
+                    { q: "What is the minimum alcohol content for intensely sweet wines like Beerenauslese and TBA?", a: "5.5% ABV", o: ["7.0% ABV", "8.0% ABV", "There is no minimum"] },
+                    { q: "The term 'halbtrocken' signifies what level of sweetness?", a: "Half-dry or off-dry", o: ["Dry", "Medium-sweet", "Sweet"] },
+                    { q: "The VDP's rules on permitted grape varieties are strictest for which classification?", a: "VDP.Grosse Lage®", o: ["VDP.Gutswein", "VDP.Ortswein", "VDP.Erste Lage®"] },
+                    { q: "What is the German term for a major, protected wine-growing region, such as Mosel?", a: "Anbaugebiet", o: ["Bereich", "Landwein", "Weingut"] },
+                    { q: "Which Prädikat level means 'late harvest'?", a: "Spätlese", o: ["Kabinett", "Auslese", "Eiswein"] },
+                    { q: "The use of a gold-colored capsule (Goldkapsel) by Mosel producers typically indicates what?", a: "A reserve bottling with additional sweetness/richness", o: ["The wine is from a Grosse Lage", "The wine is at least 10 years old", "The wine is made from organic grapes"] },
+                    { q: "Which Prädikat level means 'select harvest' and is made from very ripe, hand-selected bunches?", a: "Auslese", o: ["Spätlese", "Beerenauslese", "Kabinett"] },
+                    { q: "The VDP classification is not part of German wine law but represents what?", a: "A self-imposed, higher standard of quality", o: ["A marketing cooperative", "A historical system that is no longer used", "A set of guidelines for export wines only"] },
+                    { q: "What is the German term for a wine estate or winery?", a: "Weingut", o: ["Winzer", "Kellerei", "Genossenschaft"] },
+                    { q: "The term 'Süssreserve' refers to what?", a: "Unfermented grape juice added to a wine to increase sweetness", o: ["A legally mandated aging period for sweet wines", "A special reserve bottling of a sweet wine", "A type of noble rot"] },
+                    { q: "A wine labeled 'Piesporter Michelsberg' is from a:", a: "Grosslage", o: ["Einzellage", "Bereich", "Anbaugebiet"] },
+                    { q: "A wine labeled 'Wehlener Sonnenuhr' is from a:", a: "Einzellage", o: ["Grosslage", "Bereich", "Anbaugebiet"] },
+                    { q: "Which of these is a PDO (Protected Designation of Origin) category?", a: "Qualitätswein", o: ["Landwein", "Deutscher Wein", "Sekt"] },
+                    { q: "The VDP requires hand-harvesting for all single vineyard wines and any Prädikat wine of which level or above?", a: "Auslese", o: ["Kabinett", "Spätlese", "Qualitätswein"] },
+                    { q: "What is the term for a district within an Anbaugebiet, such as Bernkastel or Saar?", a: "Bereich", o: ["Grosslage", "Gemeinde", "Ortsteil"] },
+                    { q: "The release date for VDP Grosses Gewächs white wines is no earlier than:", a: "September 1 of the year after harvest", o: ["May 1 of the year after harvest", "January 1 of the year after harvest", "Two years after harvest"] },
+                    { q: "What does the term 'lieblich' signify on a label?", a: "Medium-sweet", o: ["Dry", "Off-dry", "Sweet"] },
+                    { q: "The 1971 law's focus on must weight devalued what traditional basis of quality?", a: "Terroir and origin", o: ["Acidity levels", "Producer reputation", "Aging potential"] },
+                    { q: "Which of these terms is NOT part of the VDP classification?", a: "VDP.Classic", o: ["VDP.Gutswein", "VDP.Ortswein", "VDP.Grosse Lage®"] },
+                ]
+            },
+            gastronome: {
+                title: "The Gastronome's Table",
+                instructions: "Answer 10 multiple-choice questions about the cuisine, ingredients, and classic pairings of the Mosel. After a correct answer, you may have the option to generate an AI explanation.",
+                questions: [
+                    { q: "What is the most famous Mosel specialty, consisting of pork marinated and slow-cooked in wine and grape pomace?", a: "Tresterfleisch", o: ["Sauerbraten", "Debbekoche", "Zwiwwelfleisch"], subjectType: 'dish', subjectName: 'Tresterfleisch' },
+                    { q: "A savory baked potato dish mixed with cured pork belly and onions, cooked in a cast-iron pot, is known as:", a: "Debbekoche", o: ["Kartoffelsalat", "Himmel un Äd", "Reibekuchen"], subjectType: 'dish', subjectName: 'Debbekoche' },
+                    { q: "The classic Rhineland dish 'Himmel un Äd' ('Heaven and Earth') pairs fried black pudding with what?", a: "Mashed potatoes and apple compote", o: ["Sauerkraut and noodles", "Red cabbage and dumplings", "Lentil soup and sausage"], subjectType: 'dish', subjectName: 'Himmel un Äd' },
+                    { q: "A crisp, dry (Trocken) Mosel Riesling is a classic pairing for which local food?", a: "Pan-fried river trout (Forelle)", o: ["Rich beef stew", "Blue cheese", "Chocolate cake"], subjectType: 'wine_pairing', subjectName: 'Trout and Dry Riesling' },
+                    { q: "Mosel Rieslings with some residual sugar, like Kabinett and Spätlese, are famously well-suited to what type of cuisine?", a: "Spicy Thai and Vietnamese food", o: ["Heavy, cream-based Italian pasta", "Grilled steak and barbecue", "Salty cured meats and olives"], subjectType: 'wine_pairing', subjectName: 'Riesling with Spicy Cuisine' },
+                    { q: "What is the region's signature spirit, a clear brandy distilled from grape pomace?", a: "Tresterbrand", o: ["Kirschwasser", "Obstler", "Schnaps"], subjectType: 'beverage', subjectName: 'Tresterbrand' },
+                    { q: "What is the name of the unique, intensely aromatic local variety of peach grown amongst the vines?", a: "Red Vineyard Peach (Roter Weinbergpfirsich)", o: ["White Danube Peach", "Black Forest Peach", "Rhine Valley Peach"], subjectType: 'ingredient', subjectName: 'Red Vineyard Peach' },
+                    { q: "Rich, sweet Auslese and Beerenauslese wines are a classic pairing for what savory delicacy?", a: "Blue cheese or foie gras", o: ["Grilled sausage", "Pickled herring", "Smoked ham"], subjectType: 'wine_pairing', subjectName: 'Sweet Riesling and Foie Gras' },
+                    { q: "Zwiwwelfleisch is a hearty stew of pork or beef braised with a large quantity of what two ingredients?", a: "Onions and wine", o: ["Potatoes and carrots", "Cabbage and bacon", "Mushrooms and cream"], subjectType: 'dish', subjectName: 'Zwiwwelfleisch' },
+                    { q: "The German equivalent of Italian Grappa or French Marc is known in the Mosel as:", a: "Tresterbrand", o: ["Korn", "Weinbrand", "Geist"], subjectType: 'beverage', subjectName: 'Tresterbrand' },
+                    { q: "Which local fish is often pan-fried or poached and served with a creamy Riesling sauce?", a: "Pike-perch (Zander)", o: ["Cod (Dorsch)", "Herring (Hering)", "Salmon (Lachs)"], subjectType: 'ingredient', subjectName: 'Zander' },
+                    { q: "The high acidity of a dry Mosel Riesling serves what purpose when paired with rich or fatty foods like Debbekoche?", a: "It cuts through the richness and cleanses the palate", o: ["It enhances the sweetness of the dish", "It matches the weight of the food", "It softens the texture of the meat"], subjectType: 'wine_pairing', subjectName: 'Acidity in Food Pairing' },
+                    { q: "Which of these is NOT considered a key local ingredient in Mosel cuisine?", a: "Olives", o: ["Walnuts", "Wild boar", "Freshwater fish"], subjectType: 'ingredient', subjectName: 'Mosel Ingredients' },
+                    { q: "The slight sweetness in a Riesling Kabinett helps to tame what sensation in spicy food?", a: "Chili heat", o: ["Saltiness", "Sourness", "Bitterness"], subjectType: 'wine_pairing', subjectName: 'Riesling with Spicy Cuisine' },
+                    { q: "Trester, the key ingredient for marinating Tresterfleisch, is the German word for what?", a: "Grape pomace (skins, seeds, stems)", o: ["Unfermented grape juice", "Young wine", "Vine leaves"], subjectType: 'ingredient', subjectName: 'Trester' },
+                    { q: "While not a major beer region, the local beer culture in the Mosel aligns with the broader Rhineland, favoring which style?", a: "Pilsner", o: ["Stout", "India Pale Ale", "Barleywine"], subjectType: 'beverage', subjectName: 'German Beer Styles' },
+                    { q: "A traditional preparation for local river fish involves wrapping and cooking them in what?", a: "Vine leaves", o: ["Cabbage leaves", "Bacon", "Pastry dough"], subjectType: 'dish', subjectName: 'Fish in Vine Leaves' },
+                    { q: "The gastronomic identity of the Mosel is best described as:", a: "Deeply interwoven with viticulture", o: ["Heavily influenced by French haute cuisine", "Focused on modern, molecular gastronomy", "Based primarily on imported ingredients"], subjectType: 'gastronomy', subjectName: 'Mosel Cuisine' },
+                    { q: "Which of these is NOT a classic Mosel dish?", a: "Weisswurst", o: ["Debbekoche", "Tresterfleisch", "Himmel un Äd"], subjectType: 'dish', subjectName: 'Mosel Cuisine' },
+                    { q: "The pairing of a sweet TBA Riesling with a dessert made from the Red Vineyard Peach is an example of what pairing principle?", a: "Complementary (matching flavors)", o: ["Contrasting (sweet vs. sour)", "Textural opposition", "No specific principle"], subjectType: 'wine_pairing', subjectName: 'Dessert Pairing' },
+                    { q: "What is the German name for trout, a common fish from the Mosel river?", a: "Forelle", o: ["Zander", "Aal", "Hecht"], subjectType: 'ingredient', subjectName: 'Trout (Forelle)' },
+                    { q: "The hearty, rustic nature of traditional Mosel food was designed to sustain whom?", a: "Workers in the steep vineyards", o: ["The noble class and clergy", "Visiting tourists", "Roman soldiers"], subjectType: 'gastronomy', subjectName: 'Mosel Cuisine' },
+                    { q: "Which of these is NOT a byproduct of viticulture used in Mosel gastronomy?", a: "Grapevine roots", o: ["Grape pomace (Trester)", "Wine", "Vine leaves"], subjectType: 'gastronomy', subjectName: 'Viticultural Gastronomy' },
+                    { q: "The crispness of a dry Riesling provides a textural contrast to what element in fried dishes like schnitzel?", a: "The crispy crust", o: ["The tender meat", "The savory gravy", "The accompanying potatoes"], subjectType: 'wine_pairing', subjectName: 'Texture in Food Pairing' },
+                    { q: "The aromatic essence of the Riesling grape can be captured in which local spirit?", a: "Tresterbrand", o: ["Gin", "Vodka", "Rum"], subjectType: 'beverage', subjectName: 'Tresterbrand' },
+                    { q: "What is the German term for wheat beer, another common style found in the region?", a: "Hefeweizen", o: ["Bock", "Schwarzbier", "Kölsch"], subjectType: 'beverage', subjectName: 'German Beer Styles' },
+                    { q: "The 'Debbe' in Debbekoche refers to what?", a: "The cast-iron pot it's cooked in", o: ["The type of potato used", "The cured pork belly", "A local herb"], subjectType: 'dish', subjectName: 'Debbekoche' },
+                    { q: "A wine-braised onion stew with pork or beef is known as:", a: "Zwiwwelfleisch", o: ["Gulasch", "Rouladen", "Tresterfleisch"], subjectType: 'dish', subjectName: 'Zwiwwelfleisch' },
+                    { q: "Which of these ingredients provides the 'Earth' (Äd) component in 'Himmel un Äd'?", a: "Potatoes", o: ["Black pudding", "Apples", "Onions"], subjectType: 'dish', subjectName: 'Himmel un Äd' },
+                    { q: "The versatility of Mosel Riesling is due to its spectrum of sweetness levels and what other key structural component?", a: "High acidity", o: ["Low alcohol", "Tannin", "Body"], subjectType: 'wine', subjectName: 'Riesling' },
+                    { q: "Which of these pairings is the most classic example of contrasting flavors?", a: "Sweet Auslese with salty blue cheese", o: ["Dry Riesling with river trout", "Spätlese with spicy curry", "Tresterfleisch with a local beer"], subjectType: 'wine_pairing', subjectName: 'Contrasting Pairings' },
+                    { q: "The Red Vineyard Peach is often used to make what products, besides being eaten fresh?", a: "Liqueurs and desserts", o: ["Savory sauces for meat", "Pickles and preserves", "Flour for bread"], subjectType: 'ingredient', subjectName: 'Red Vineyard Peach' },
+                    { q: "What is the German term for pike-perch?", a: "Zander", o: ["Forelle", "Karpfen", "Wels"], subjectType: 'ingredient', subjectName: 'Zander' },
+                    { q: "The use of wine directly in cooking, as in Zwiwwelfleisch, is a hallmark of what?", a: "Local Mosel cuisine", o: ["Modernist cooking", "Italian cuisine", "Fast food"], subjectType: 'gastronomy', subjectName: 'Mosel Cuisine' },
+                    { q: "Which of these is NOT a typical pairing for a dry Mosel Riesling?", a: "A rich, creamy dessert", o: ["Pork schnitzel", "Sausages", "Pan-seared fish"], subjectType: 'wine_pairing', subjectName: 'Dry Riesling Pairings' },
+                    { q: "The process of making Tresterbrand is an example of what?", a: "Utilizing byproducts of winemaking", o: ["A modern invention", "A legally required practice", "A method for sweetening wine"], subjectType: 'beverage', subjectName: 'Tresterbrand' },
+                    { q: "The 'Scholes' is another name for which baked potato dish?", a: "Debbekoche", o: ["Bratkartoffeln", "Kartoffelpuffer", "Knödel"], subjectType: 'dish', subjectName: 'Debbekoche' },
+                    { q: "The balance of sweetness and acidity in a Spätlese makes it a good match for dishes that have what kind of flavor profile?", a: "Savory and sweet", o: ["Bitter and salty", "Purely savory", "Purely sour"], subjectType: 'wine_pairing', subjectName: 'Off-Dry Riesling Pairings' },
+                    { q: "Which of these is a key flavor component of 'Himmel un Äd'?", a: "The savory richness of black pudding", o: ["The spicy heat of chili", "The bitter notes of radicchio", "The umami of soy sauce"], subjectType: 'dish', subjectName: 'Himmel un Äd' },
+                    { q: "What is the most common style of beer found in the Mosel region?", a: "Pilsner", o: ["Porter", "Saison", "Lambic"], subjectType: 'beverage', subjectName: 'German Beer Styles' },
+                    { q: "The long marination period for Tresterfleisch is crucial for what?", a: "Developing tender texture and deep aroma", o: ["Preserving the meat for storage", "Making the meat sweeter", "Giving the meat a crispy crust"], subjectType: 'dish', subjectName: 'Tresterfleisch' },
+                    { q: "Which of these is a classic garnish for 'Himmel un Äd'?", a: "Fried onions", o: ["Fresh parsley", "Grated cheese", "Toasted nuts"], subjectType: 'dish', subjectName: 'Himmel un Äd' },
+                    { q: "The term 'vineyard-to-table' ethos in the Mosel refers to what?", a: "The direct incorporation of vineyard products into local cuisine", o: ["A restaurant certification", "A type of organic farming", "A wine delivery service"], subjectType: 'gastronomy', subjectName: 'Mosel Cuisine' },
+                    { q: "Which of these is NOT a common preparation for Mosel river fish?", a: "Deep-fried in batter", o: ["Pan-fried", "Poached", "Served in a Riesling cream sauce"], subjectType: 'dish', subjectName: 'Mosel Fish Dishes' },
+                    { q: "The primary purpose of the food in the Mosel was traditionally:", a: "To be hearty and sustaining", o: ["To be light and delicate", "To be highly spiced", "To be served in small portions"], subjectType: 'gastronomy', subjectName: 'Mosel Cuisine' },
+                    { q: "Which of these ingredients is NOT typically found in Debbekoche?", a: "Sweet potatoes", o: ["Grated raw potatoes", "Cured pork belly", "Onions"], subjectType: 'dish', subjectName: 'Debbekoche' },
+                    { q: "The distillation of Tresterbrand is a way to use what part of the grape harvest?", a: "The pomace left after pressing", o: ["The free-run juice", "The leaves and canes", "The unripe grapes"], subjectType: 'beverage', subjectName: 'Tresterbrand' },
+                    { q: "A Riesling cream sauce is a classic accompaniment for what?", a: "Local river fish", o: ["Roasted lamb", "Spicy sausage", "Leafy green salads"], subjectType: 'dish', subjectName: 'Riesling Sauce' },
+                    { q: "Which of these pairings best exemplifies the 'cuts through fat' principle?", a: "Dry Riesling with Debbekoche", o: ["Auslese with fruit tart", "Kabinett with spring rolls", "TBA with blue cheese"], subjectType: 'wine_pairing', subjectName: 'Acidity in Food Pairing' },
+                    { q: "The traditional cuisine of the Mosel reflects a history of what?", a: "Agricultural self-sufficiency", o: ["International trade and imported spices", "Royal court banquets", "Strict dietary laws"], subjectType: 'gastronomy', subjectName: 'Mosel Cuisine' },
+                ]
+            },
+            critic: {
+                title: "The Critic's Corner",
+                instructions: "Answer 10 multiple-choice questions about the vintages, producers, and market context of the Mosel. After a correct answer, you may have the option to generate an AI tasting note.",
+                questions: [
+                    { q: "Which producer is considered a 'First Growth' of the Saar, famous for its Scharzhofberger Rieslings?", a: "Egon Müller", o: ["Joh. Jos. Prüm", "Fritz Haag", "Dr. Loosen"], subjectType: 'producer', subjectName: 'Egon Müller' },
+                    { q: "Which vintage is described as a 'return to a classic, lightweight style' with high, piercing acidity and low alcohol?", a: "2021", o: ["2018", "2019", "2020"], subjectType: 'vintage', subjectName: '2021 Mosel Vintage' },
+                    { q: "Which producer, based in Wehlen, is an icon for its long-lived Auslese Goldkapsel from the Sonnenuhr vineyard?", a: "Joh. Jos. Prüm", o: ["Willi Schaefer", "Maximin Grünhaus", "Markus Molitor"], subjectType: 'producer', subjectName: 'Joh. Jos. Prüm' },
+                    { q: "The 2019 vintage is critically acclaimed as a potentially legendary year, producing what style of wines?", a: "Powerful, concentrated, and structured with high acidity", o: ["Light, delicate, and simple for early drinking", "Lean, austere, and very dry", "Overripe, low-acid, and generous"], subjectType: 'vintage', subjectName: '2019 Mosel Vintage' },
+                    { q: "Which producer is a benchmark for the Ruwer valley, owning the Abtsberg, Herrenberg, and Bruderberg vineyards as a monopole?", a: "Maximin Grünhaus", o: ["Karthäuserhof", "Hofgut Falkenstein", "Van Volxem"], subjectType: 'producer', subjectName: 'Maximin Grünhaus' },
+                    { q: "How is the 2018 vintage generally characterized by critics?", a: "Very hot and dry, leading to ripe, generous, fruit-forward wines", o: ["Cool and wet, producing lean, high-acid wines", "A perfectly balanced, classic vintage", "A low-yielding vintage with intense concentration"], subjectType: 'vintage', subjectName: '2018 Mosel Vintage' },
+                    { q: "Which producer is considered a 'Value Champion', known for their widely available 'Dr. L' Riesling and high-quality single vineyard wines?", a: "Dr. Loosen", o: ["Egon Müller", "Klaus Peter Keller", "Fritz Haag"], subjectType: 'producer', subjectName: 'Dr. Loosen' },
+                    { q: "Which of these is considered a 'Rising Star' known for his Piesporter Goldtröpfchen Kabinett?", a: "Julian Haart", o: ["Selbach-Oster", "Max Ferd. Richter", "Willi Schaefer"], subjectType: 'producer', subjectName: 'Julian Haart' },
+                    { q: "The 2015 vintage is hailed as a 'Goldilocks' or benchmark year, producing wines that are:", a: "Ripe, concentrated, and perfectly balanced with power and finesse", o: ["Extremely acidic and needing decades to soften", "Simple and fruity for immediate consumption", "Challenging and highly variable between producers"], subjectType: 'vintage', subjectName: '2015 Mosel Vintage' },
+                    { q: "Which producer, based in Brauneberg, is a 'First Growth' famed for wines from the Juffer Sonnenuhr vineyard?", a: "Fritz Haag", o: ["Joh. Jos. Prüm", "Egon Müller", "Willi Schaefer"], subjectType: 'producer', subjectName: 'Fritz Haag' },
+                    { q: "The 2010 vintage is known for being unique and extreme, with what defining characteristic?", a: "Record-high, searing acidity and incredible intensity", o: ["Very high alcohol and ripe, jammy fruit", "Widespread dilution from heavy rains", "Perfect balance and approachability"], subjectType: 'vintage', subjectName: '2010 Mosel Vintage' },
+                    { q: "Which 'Rising Star' is known for revitalizing vineyards in Dhron, such as the Hofberg?", a: "A.J. Adam", o: ["Carl Loewen", "Weiser-Künstler", "Max Kilburg"], subjectType: 'producer', subjectName: 'A.J. Adam' },
+                    { q: "Which vintage was very challenging due to a wet harvest and the threat of the Suzuki fruit fly, requiring rapid, selective picking?", a: "2014", o: ["2015", "2012", "2016"], subjectType: 'vintage', subjectName: '2014 Mosel Vintage' },
+                    { q: "Which producer is an icon of Graach, particularly for wines from the Domprobst vineyard?", a: "Willi Schaefer", o: ["Fritz Haag", "Dr. Loosen", "Markus Molitor"], subjectType: 'producer', subjectName: 'Willi Schaefer' },
+                    { q: "The 2007 vintage is considered a classic, textbook example of great Mosel Riesling, producing wines that are:", a: "Elegant, balanced, and intensely aromatic with great purity", o: ["Hot, powerful, and alcoholic", "Lean, austere, and needing long aging", "Simple and fruity for early drinking"], subjectType: 'vintage', subjectName: '2007 Mosel Vintage' },
+                    { q: "Which producer, known for his three-star capsule system, has a massive estate covering many top vineyards?", a: "Markus Molitor", o: ["Egon Müller", "Klaus Peter Keller", "Joh. Jos. Prüm"], subjectType: 'producer', subjectName: 'Markus Molitor' },
+                    { q: "Which of these is a 'Value Champion' from the Saar, known for a staunchly traditional, feinherb style?", a: "Hofgut Falkenstein", o: ["Egon Müller", "Van Volxem", "Zilliken"], subjectType: 'producer', subjectName: 'Hofgut Falkenstein' },
+                    { q: "The 2020 vintage is noted for being warm and dry but more balanced than 2018/2019, resulting in wines with:", a: "Clarity and precision", o: ["Atypically low acidity", "A very light body", "Dominant botrytis character"], subjectType: 'vintage', subjectName: '2020 Mosel Vintage' },
+                    { q: "Which 'Rising Star' is known for their work in Traben-Trarbach, particularly the Enkircher Ellergrub vineyard?", a: "Weiser-Künstler", o: ["Julian Haart", "A.J. Adam", "Max Kilburg"], subjectType: 'producer', subjectName: 'Weiser-Künstler' },
+                    { q: "The 2006 vintage was difficult for dry wines but excellent for what style, due to widespread botrytis?", a: "BA and TBA", o: ["Kabinett", "Trocken GG", "Sekt"], subjectType: 'vintage', subjectName: '2006 Mosel Vintage' },
+                    { q: "Which producer, though based in Rheinhessen, produces some of the Mosel's most sought-after GGs and Kabinetts from the Schubertslay vineyard?", a: "Klaus Peter Keller", o: ["Wittmann", "Bürklin-Wolf", "Dönnhoff"], subjectType: 'producer', subjectName: 'Klaus Peter Keller' },
+                    { q: "The 2017 vintage was marked by what event, which dramatically reduced yields but concentrated the remaining fruit?", a: "Severe spring frost", o: ["Summer drought", "Harvest rains", "A widespread hail storm"], subjectType: 'vintage', subjectName: '2017 Mosel Vintage' },
+                    { q: "Which 'Value Champion' is known for their classic, refined Rieslings from Zeltingen?", a: "Selbach-Oster", o: ["Dr. Loosen", "Fritz Haag", "Markus Molitor"], subjectType: 'producer', subjectName: 'Selbach-Oster' },
+                    { q: "Which vintage is described as a classic 'acid' year, producing racy, focused wines with pronounced minerality?", a: "2008", o: ["2009", "2011", "2018"], subjectType: 'vintage', subjectName: '2008 Mosel Vintage' },
+                    { q: "Which 'Rising Star' is known for working with extremely old, ungrafted vines in Leiwen, including the Maximin Herrenberg '1896' plot?", a: "Carl Loewen", o: ["Julian Haart", "A.J. Adam", "Weiser-Künstler"], subjectType: 'producer', subjectName: 'Carl Loewen' },
+                    { q: "The 2022 vintage was hot and dry, but surprisingly produced wines that were:", a: "Elegant and fresh", o: ["Overripe and low in acid", "Dilute and weak", "Astringent and tannic"], subjectType: 'vintage', subjectName: '2022 Mosel Vintage' },
+                    { q: "Which of these is NOT considered one of the Mosel's 'First Growth' benchmark producers?", a: "Dr. Loosen", o: ["Egon Müller", "Joh. Jos. Prüm", "Fritz Haag"], subjectType: 'producer', subjectName: 'Mosel Producers' },
+                    { q: "The 2004 vintage is considered a benchmark for what style of Mosel wine?", a: "Classic, lightweight, elegant, and mineral-driven", o: ["Rich, powerful, and botrytized", "Fruity, simple, and easy-drinking", "High-alcohol and dry"], subjectType: 'vintage', subjectName: '2004 Mosel Vintage' },
+                    { q: "Which producer is a 'Rising Star' from Wintrich?", a: "Max Kilburg", o: ["Julian Haart", "A.J. Adam", "Carl Loewen"], subjectType: 'producer', subjectName: 'Max Kilburg' },
+                    { q: "The 2005 vintage was particularly successful for which style of wines?", a: "Sweeter Prädikate (Auslese and up)", o: ["Dry (Trocken) wines", "Kabinett", "Sekt"], subjectType: 'vintage', subjectName: '2005 Mosel Vintage' },
+                    { q: "Which producer is a 'Value Champion' based in Mülheim?", a: "Max Ferd. Richter", o: ["Selbach-Oster", "Hofgut Falkenstein", "Dr. Loosen"], subjectType: 'producer', subjectName: 'Max Ferd. Richter' },
+                    { q: "The 2011 vintage produced wines that were generally:", a: "Rich, full-bodied, and accessible with ripe fruit", o: ["Lean, acidic, and austere", "Elegant, filigreed, and mineral-driven", "Botrytis-affected and sweet"], subjectType: 'vintage', subjectName: '2011 Mosel Vintage' },
+                    { q: "The critical reputation of Mosel Riesling is built on its ability to combine flavor concentration with what?", a: "Remarkably low alcohol levels", o: ["A rich, creamy texture", "A deep golden color", "A complete lack of acidity"], subjectType: 'wine_style', subjectName: 'Mosel Riesling' },
+                    { q: "Which of these is NOT a 'Rising Star' of the Mosel?", a: "Fritz Haag", o: ["Julian Haart", "Weiser-Künstler", "A.J. Adam"], subjectType: 'producer', subjectName: 'Mosel Producers' },
+                    { q: "The 2016 vintage was very mixed due to a wet spring and summer, meaning quality depended heavily on what?", a: "Producer skill and diligence", o: ["The age of the vines", "The type of slate soil", "The Prädikat level"], subjectType: 'vintage', subjectName: '2016 Mosel Vintage' },
+                    { q: "Which of these is considered a 'First Growth' of the Mosel?", a: "Willi Schaefer", o: ["Dr. Loosen", "Selbach-Oster", "Carl Loewen"], subjectType: 'producer', subjectName: 'Willi Schaefer' },
+                    { q: "The 2013 vintage was very late and cool, producing wines that are:", a: "Lean and high-acid with intense citrus character", o: ["Ripe, generous, and low in acid", "Powerful and concentrated", "Simple and fruity for early drinking"], subjectType: 'vintage', subjectName: '2013 Mosel Vintage' },
+                    { q: "The term 'laser-like focus' is often used by critics to describe what characteristic of Mosel Riesling?", a: "Its purity and precision", o: ["Its high alcohol", "Its dark color", "Its oak influence"], subjectType: 'wine_style', subjectName: 'Mosel Riesling' },
+                    { q: "Which of these is a 'First Growth' producer?", a: "Maximin Grünhaus", o: ["A.J. Adam", "Hofgut Falkenstein", "Max Ferd. Richter"], subjectType: 'producer', subjectName: 'Maximin Grünhaus' },
+                    { q: "The 2009 vintage was warm and ripe, similar to 2011, producing wines with:", a: "Generous fruit and softer acidity", o: ["Piercing acidity and sharp minerality", "Delicate floral notes and low alcohol", "Significant botrytis"], subjectType: 'vintage', subjectName: '2009 Mosel Vintage' },
+                    { q: "Which of these is a 'Value Champion' producer?", a: "Selbach-Oster", o: ["Egon Müller", "Joh. Jos. Prüm", "Klaus Peter Keller"], subjectType: 'producer', subjectName: 'Selbach-Oster' },
+                    { q: "The 2023 vintage is described as producing what style of wines?", a: "Juicy, fruit-forward, and accessible", o: ["Lean, austere, and highly acidic", "Powerful, concentrated, and built for aging", "A very poor, dilute vintage"], subjectType: 'vintage', subjectName: '2023 Mosel Vintage' },
+                    { q: "The exceptional aging potential of top Mosel Rieslings is primarily due to their:", a: "High acidity", o: ["High alcohol", "Tannin content", "Use of new oak"], subjectType: 'wine_style', subjectName: 'Mosel Riesling' },
+                    { q: "Which of these is a 'Rising Star' producer?", a: "Carl Loewen", o: ["Fritz Haag", "Willi Schaefer", "Maximin Grünhaus"], subjectType: 'producer', subjectName: 'Carl Loewen' },
+                    { q: "The 2012 vintage is not on the provided chart, but based on surrounding years, a balanced year would likely be described as:", a: "Classic, with purity and structure", o: ["Extremely hot and ripe", "Very cool and lean", "A complete washout"], subjectType: 'vintage', subjectName: 'Mosel Vintages' },
+                    { q: "Which of these is a 'First Growth' producer?", a: "Joh. Jos. Prüm", o: ["Dr. Loosen", "Julian Haart", "Weiser-Künstler"], subjectType: 'producer', subjectName: 'Joh. Jos. Prüm' },
+                    { q: "A key challenge for producers in a hot vintage like 2018 is:", a: "Retaining sufficient acidity", o: ["Achieving enough ripeness", "Preventing frost damage", "Combating fungal diseases"], subjectType: 'vintage', subjectName: '2018 Mosel Vintage' },
+                    { q: "Which of these is a 'Value Champion' producer?", a: "Max Ferd. Richter", o: ["Egon Müller", "Klaus Peter Keller", "A.J. Adam"], subjectType: 'producer', subjectName: 'Max Ferd. Richter' },
+                    { q: "The 'new wave' of Mosel producers is often focused on what style of wine?", a: "Dry wines and reclaiming historic sites", o: ["Noble sweet wines", "High-volume commercial wines", "Sparkling Sekt"], subjectType: 'producer', subjectName: 'Mosel Producers' },
+                    { q: "A key challenge for producers in a cool, wet vintage like 2021 is:", a: "High disease pressure and low yields", o: ["Over-ripeness and low acidity", "Drought stress", "Sunburn on the grapes"], subjectType: 'vintage', subjectName: '2021 Mosel Vintage' },
+                ]
+            },
+        };
+
+        // This new object contains comprehensive flashcard data, separate from the quiz questions
+        const flashcardData = {
+            historian: [
+                { q: "In which century did the Romans introduce viticulture to the Mosel?", a: "2nd Century CE" },
+                { q: "What city, founded as Augusta Treverorum, was a Roman capital and the center of early Mosel wine culture?", a: "Trier" },
+                { q: "What famous Roman artifact depicts a ship laden with wine barrels, attesting to a flourishing wine trade?", a: "The Neumagen wine ship" },
+                { q: "After the Romans, which institutions became the primary custodians of viticultural knowledge in the Middle Ages?", a: "Christian monasteries (e.g., Cistercians)" },
+                { q: "In what year did the Prince-elector of Trier, Clemens Wenceslaus, decree that all vines must be replaced with Riesling?", a: "1786" },
+                { q: "Under which government's rule, beginning in 1815, did the Mosel enter its 'golden age'?", a: "Prussian rule" },
+                { q: "What was the landmark 1868 Prussian vineyard classification map called?", a: "Saar und Mosel Weinbau-Karte" },
+                { q: "The 1868 Prussian classification used what as a direct proxy for terroir quality?", a: "Economic value (net income and wine prices)" },
+                { q: "The 1868 map color-coded the top vineyard sites, equivalent to a modern grand cru, in what color?", a: "Dark red" },
+                { q: "What landmark piece of legislation, enacted in 1971, shifted the basis of German wine quality to must weight?", a: "The 1971 German Wine Law (Weingesetz)" },
+                { q: "The 1971 Wine Law was criticized for legally erasing the distinction between single vineyards (Einzellagen) and what?", a: "Collective vineyard sites (Grosslagen)" },
+                { q: "What prestigious producer association led the 'modern quality revolution' by creating its own terroir-based classification?", a: "VDP (Verband Deutscher Prädikats- und Qualitätsweingüter)" },
+                { q: "The VDP's classification system is explicitly modeled on the principles of what historical document?", a: "The 1868 Prussian vineyard classification map" },
+                { q: "What is the highest tier in the VDP's four-tiered quality pyramid?", a: "VDP.Grosse Lage® (Great Site)" },
+                { q: "The magnificent Reichsburg Cochem castle symbolizes what aspect of the Mosel's history?", a: "The historical power and wealth derived from controlling the region's wine trade." },
+                { q: "What is the oldest wine-growing region in Germany?", a: "The Mosel" },
+                { q: "The VDP was originally founded with what name in 1910?", a: "VDNV (Verband Deutscher Naturweinversteigerer)" },
+                { q: "The 1971 wine law banned traditional quality terms like 'feine' and 'hochfeine', leading producers to adopt what informal indicator for reserve sweet wines?", a: "The Gold Capsule (Goldkapsel)" },
+                { q: "What campaign, known as Flurbereinigung, consolidated and restructured many of Germany's vineyards in the post-war period?", a: "Flurbereinigung" },
+                { q: "The EU's Common Market Organization for Wine in 1970 prompted Germany to formalize its 13 wine regions, or what?", a: "Anbaugebiete" },
+            ],
+            terroir: [
+                { q: "What is the parent rock of the Middle Mosel, Saar, and Ruwer, formed approximately 400 million years ago?", a: "Devonian Slate" },
+                { q: "What is the most prevalent type of slate, known for its superior heat retention and giving wines a 'flinty' minerality?", a: "Blue Devonian Slate (Blauschiefer)" },
+                { q: "What is the reddish-brown slate found in villages like Ürzig, which contains a high concentration of iron oxide?", a: "Red Slate (Rotschiefer)" },
+                { q: "What is the name of the world's steepest vineyard, located in the Mosel?", a: "Bremmer Calmont" },
+                { q: "The Mosel's climate is classified as cool continental, located at what parallel north?", a: "50th parallel north" },
+                { q: "The Mosel is legally subdivided into six districts. What is the German term for these districts?", a: "Bereiche" },
+                { q: "Which Bereich is the central and most famous section, known as the Middle Mosel?", a: "Bernkastel" },
+                { q: "Which two tributaries of the Mosel have their own Bereich and are known for particularly cool climates and high-acid wines?", a: "Saar and Ruwer" },
+                { q: "The GDD for Bernkastel-Kues is 852.0°C, placing it in which Winkler climate category?", a: "Region Ia" },
+                { q: "What is the most significant and recurring viticultural risk in the Mosel?", a: "Spring Frost" },
+                { q: "Besides frost, what are the other two primary viticultural risks in the Mosel?", a: "Fungal disease pressure and soil erosion" },
+                { q: "What is the primary viticultural advantage of the slate soils' excellent drainage?", a: "It prevents waterlogging and forces vines to develop deep root systems." },
+                { q: "Wines grown on Red Slate tend to have what textural characteristic compared to those from Blue Slate?", a: "Richer, more powerful, and broader on the palate" },
+                { q: "The Upper Mosel (Obermosel) has a different geology from the rest of the region, primarily composed of what?", a: "Shell-limestone (Muschelkalk)" },
+                { q: "What is the German term for the dry-stone terrace walls essential for stabilizing the steepest slopes?", a: "Mauern" },
+                { q: "What is the average annual rainfall in the Mosel?", a: "650 to 900 millimeters" },
+                { q: "The Mosel river provides a crucial moderating influence by reflecting sunlight and what else?", a: "Radiating stored heat at night" },
+                { q: "The soils of the Mosel are notably free of what mineral?", a: "Lime" },
+                { q: "The Devonian slate was formed from ocean sediments compressed during the collision of which two ancient continents?", a: "Gondwana and Laurussia" },
+                { q: "Which Bereich is also known as the Lower Mosel or Terrassenmosel?", a: "Burg Cochem" },
+                { q: "What is the primary reason for the extreme steepness of the vineyards?", a: "To maximize exposure to sunlight for ripening in a northern latitude." },
+                { q: "The high humidity from the river increases the risk of which two fungal diseases?", a: "Downy mildew (Peronospora) and powdery mildew (Oidium)" },
+                { q: "The GDD for Trier is approximately what?", a: "944°C" },
+                { q: "The Mosel river flows northeast to its confluence with which major river at Koblenz?", a: "The Rhine River" },
+                { q: "The cool continental climate allows for a long, slow growing season, which is ideal for developing what in Riesling?", a: "Complex aromas while retaining high acidity" },
+                { q: "What is the approximate elevation range of the steepest vineyards?", a: "They rise directly from the river's edge, often exceeding 60-degree gradients." },
+                { q: "The city of Trier is at the confluence of the Mosel and which two tributaries?", a: "The Saar and the Ruwer" },
+                { q: "What is the effect of climate change on the risk of spring frost?", a: "Budbreak is advancing faster than the last frost date, potentially increasing the window of vulnerability." },
+                { q: "Which famous Saar vineyard is NOT located directly on the river but in an ancient riverbed?", a: "Scharzhofberger" },
+                { q: "The Hunsrück hills and Eifel Mountains flank the Mosel valley, providing protection from what?", a: "Cold air drafts" },
+            ],
+            ampelographer: [
+                { q: "What is the most important and widely planted grape variety in the Mosel, accounting for 62% of plantings?", a: "Riesling" },
+                { q: "Riesling is a natural crossing of Gouais Blanc (Heunisch Weiss) and a cross of a wild vine and what other grape?", a: "Traminer" },
+                { q: "What is the traditional vine training system used on the steepest, unwired slopes of the Mosel?", a: "Single-post system (Moselpfahlerziehung)" },
+                { q: "What is the maximum yield permitted by the VDP for a VDP.Grosse Lage® wine?", a: "50 hl/ha" },
+                { q: "What key phenological trait of Riesling provides natural protection against spring frosts?", a: "It is late-budding." },
+                { q: "In the single-post system, two canes are typically bent and tied to the stake in what shape?", a: "A heart or a loop" },
+                { q: "What is the second most planted grape in the Mosel, a crossing of Riesling and Madeleine Royale?", a: "Müller-Thurgau" },
+                { q: "The thin skins of Riesling make it highly susceptible to Botrytis cinerea, which can manifest as either grey rot or what?", a: "Noble rot" },
+                { q: "What is the primary reason for the high planting densities (over 8,000 vines/ha) on steep slopes?", a: "To encourage vine competition, control vigor, and drive roots deep." },
+                { q: "The labor required for the single-post system can be up to how many times greater than in a flat, mechanized vineyard?", a: "Seven times greater" },
+                { q: "What ancient grape variety is dominant in the limestone soils of the Obermosel?", a: "Elbling" },
+                { q: "What is the maximum yield permitted by the VDP for VDP.Erste Lage® wines?", a: "60 hl/ha" },
+                { q: "What is Germany's most important red grape, accounting for 4.6% of Mosel vineyards?", a: "Spätburgunder (Pinot Noir)" },
+                { q: "What is the primary benefit of Riesling's long, slow ripening cycle in the Mosel?", a: "It develops complex aromas while retaining high acidity." },
+                { q: "Is irrigation legally permitted in the Mosel?", a: "Yes, as a regulated corrective measure during extreme drought, but it is not common practice." },
+                { q: "Which widely planted Riesling clone, also known as 21B, originated in the Mosel?", a: "Weis 21" },
+                { q: "What is the maximum yield permitted by the VDP for VDP.Ortswein and VDP.Gutswein?", a: "75 hl/ha" },
+                { q: "The German Wine Law does not mandate planting densities; what factors determine it?", a: "The training system and topography" },
+                { q: "What does the term 'Alte Reben' on a label signify?", a: "The wine is from old vines." },
+                { q: "The VDP requires its members to plant a minimum of 80% of what?", a: "Traditional grape varieties for the region" },
+            ],
+            lawmaker: [
+                { q: "What is the foundational principle of the 1971 German Wine Law's Prädikat system?", a: "The must weight (sugar level) of the grapes at harvest." },
+                { q: "What is the German term for a single, registered vineyard site?", a: "Einzellage" },
+                { q: "Chaptalization (the addition of sugar to must) is strictly forbidden for which category of German wine?", a: "Prädikatswein" },
+                { q: "What is the lightest style in the Prädikat system, made from fully ripe grapes?", a: "Kabinett" },
+                { q: "What does the VDP acronym 'GG' stand for on a wine label?", a: "Grosses Gewächs" },
+                { q: "What is the minimum must weight in degrees Oechsle for a Mosel Riesling to be classified as Spätlese?", a: "76 °Oe" },
+                { q: "A dry wine from a VDP.Grosse Lage® vineyard is known as what?", a: "Grosses Gewächs (GG)" },
+                { q: "What is the official quality control test number required on every Qualitätswein and Prädikatswein label?", a: "A.P. Nr. (Amtliche Prüfungsnummer)" },
+                { q: "Which of these is NOT one of the six Prädikat levels?", a: "Feinherb" },
+                { q: "In the VDP classification, which tier is equivalent to a 'premier cru' vineyard?", a: "VDP.Erste Lage®" },
+                { q: "What is the minimum must weight for a Mosel Riesling to qualify as Beerenauslese or Eiswein?", a: "110 °Oe" },
+                { q: "The term 'Erzeugerabfüllung' or 'Gutsabfüllung' on a label signifies what?", a: "The wine is estate-bottled" },
+                { q: "Legally, a VDP Grosses Gewächs wine is classified as what under German wine law?", a: "Qualitätswein trocken" },
+                { q: "What does the term 'trocken' legally signify on a German wine label?", a: "Dry" },
+                { q: "The 1971 Wine Law was criticized for legally erasing the distinction between which two types of vineyard sites?", a: "Einzellagen and Grosslagen" },
+                { q: "What is the highest Prädikat level, made from shriveled, botrytis-affected berries?", a: "Trockenbeerenauslese (TBA)" },
+                { q: "In the VDP classification, what is the term for a 'village wine' from traditional vineyards within a village boundary?", a: "VDP.Ortswein" },
+                { q: "What is the minimum actual alcohol content required for most Prädikat wines like Kabinett and Spätlese?", a: "7.0% ABV" },
+                { q: "The VDP's classification system is based on origin and terroir, explicitly modeled on the principles of what?", a: "The 1868 Prussian vineyard maps" },
+                { q: "What is the term for a single, registered vineyard site, the most specific indication of terroir?", a: "Einzellage" },
+                { q: "For which Prädikat level must grapes be harvested and pressed while frozen at -7°C or colder?", a: "Eiswein" },
+                { q: "The VDP logo, a stylized eagle holding a grape cluster, is known as the:", a: "VDP.Adler" },
+                { q: "What is the unofficial but widely used term for an off-dry wine, often replacing 'halbtrocken'?", a: "Feinherb" },
+                { q: "Which of these is the broadest geographical designation in the German system?", a: "Anbaugebiet" },
+                { q: "What is the minimum must weight for a Mosel Riesling to be classified as Auslese?", a: "83 °Oe" },
+                { q: "The 2021 revision of the German Wine Law began to shift focus towards a more terroir-based model for which category?", a: "Qualitätswein" },
+                { q: "What is the term for Germany's highest quality sparkling wine, made by the traditional method on a single estate?", a: "Winzersekt" },
+                { q: "The VDP prohibits its members from using what on their labels?", a: "Grosslagen names" },
+                { q: "What is the minimum must weight for Trockenbeerenauslese (TBA)?", a: "150 °Oe" },
+                { q: "The term 'Alte Reben' on a label, while unregulated, implies the wine is made from what?", a: "Old vines" },
+                { q: "In the VDP hierarchy, which is the entry-level tier representing regional wines from an estate's holdings?", a: "VDP.Gutswein" },
+                { q: "What is the minimum alcohol content for intensely sweet wines like Beerenauslese and TBA?", a: "5.5% ABV" },
+                { q: "The term 'halbtrocken' signifies what level of sweetness?", a: "Half-dry or off-dry" },
+                { q: "The VDP's rules on permitted grape varieties are strictest for which classification?", a: "VDP.Grosse Lage®" },
+                { q: "What is the German term for a major, protected wine-growing region, such as Mosel?", a: "Anbaugebiet" },
+                { q: "Which Prädikat level means 'late harvest'?", a: "Spätlese" },
+                { q: "The use of a gold-colored capsule (Goldkapsel) by Mosel producers typically indicates what?", a: "A reserve bottling with additional sweetness/richness" },
+                { q: "Which Prädikat level means 'select harvest' and is made from very ripe, hand-selected bunches?", a: "Auslese" },
+                { q: "The VDP classification is not part of German wine law but represents what?", a: "A self-imposed, higher standard of quality" },
+                { q: "What is the German term for a wine estate or winery?", a: "Weingut" },
+                { q: "The term 'Süssreserve' refers to what?", a: "Unfermented grape juice added to a wine to increase sweetness" },
+                { q: "A wine labeled 'Piesporter Michelsberg' is from a:", a: "Grosslage" },
+                { q: "A wine labeled 'Wehlener Sonnenuhr' is from a:", a: "Einzellage" },
+                { q: "Which of these is a PDO (Protected Designation of Origin) category?", a: "Qualitätswein" },
+                { q: "The VDP requires hand-harvesting for all single vineyard wines and any Prädikat wine of which level or above?", a: "Auslese" },
+                { q: "What is the term for a district within an Anbaugebiet, such as Bernkastel or Saar?", a: "Bereich" },
+                { q: "The release date for VDP Grosses Gewächs white wines is no earlier than:", a: "September 1 of the year after harvest" },
+                { q: "What does the term 'lieblich' signify on a label?", a: "Medium-sweet" },
+                { q: "The 1971 law's focus on must weight devalued what traditional basis of quality?", a: "Terroir and origin" },
+                { q: "Which of these terms is NOT part of the VDP classification?", a: "VDP.Classic" },
+            ],
+            gastronome: [
+                { q: "What is the most famous Mosel specialty, consisting of pork marinated and slow-cooked in wine and grape pomace?", a: "Tresterfleisch" },
+                { q: "A savory baked potato dish mixed with cured pork belly and onions, cooked in a cast-iron pot, is known as:", a: "Debbekoche" },
+                { q: "The classic Rhineland dish 'Himmel un Äd' ('Heaven and Earth') pairs fried black pudding with what?", a: "Mashed potatoes and apple compote" },
+                { q: "A crisp, dry (Trocken) Mosel Riesling is a classic pairing for which local food?", a: "Pan-fried river trout (Forelle)" },
+                { q: "Mosel Rieslings with some residual sugar, like Kabinett and Spätlese, are famously well-suited to what type of cuisine?", a: "Spicy Thai and Vietnamese food" },
+                { q: "What is the region's signature spirit, a clear brandy distilled from grape pomace?", a: "Tresterbrand" },
+                { q: "What is the name of the unique, intensely aromatic local variety of peach grown amongst the vines?", a: "Red Vineyard Peach (Roter Weinbergpfirsich)" },
+                { q: "Rich, sweet Auslese and Beerenauslese wines are a classic pairing for what savory delicacy?", a: "Blue cheese or foie gras" },
+                { q: "Zwiwwelfleisch is a hearty stew of pork or beef braised with a large quantity of what two ingredients?", a: "Onions and wine" },
+                { q: "The German equivalent of Italian Grappa or French Marc is known in the Mosel as:", a: "Tresterbrand" },
+                { q: "Which local fish is often pan-fried or poached and served with a creamy Riesling sauce?", a: "Pike-perch (Zander)" },
+                { q: "The high acidity of a dry Mosel Riesling serves what purpose when paired with rich or fatty foods like Debbekoche?", a: "It cuts through the richness and cleanses the palate" },
+                { q: "Which of these is NOT considered a key local ingredient in Mosel cuisine?", a: "Olives" },
+                { q: "The slight sweetness in a Riesling Kabinett helps to tame what sensation in spicy food?", a: "Chili heat" },
+                { q: "Trester, the key ingredient for marinating Tresterfleisch, is the German word for what?", a: "Grape pomace (skins, seeds, stems)" },
+                { q: "While not a major beer region, the local beer culture in the Mosel aligns with the broader Rhineland, favoring which style?", a: "Pilsner" },
+                { q: "A traditional preparation for local river fish involves wrapping and cooking them in what?", a: "Vine leaves" },
+                { q: "The gastronomic identity of the Mosel is best described as:", a: "Deeply interwoven with viticulture" },
+                { q: "Which of these is NOT a classic Mosel dish?", a: "Weisswurst" },
+                { q: "The pairing of a sweet TBA Riesling with a dessert made from the Red Vineyard Peach is an example of what pairing principle?", a: "Complementary (matching flavors)" },
+                { q: "What is the German name for trout, a common fish from the Mosel river?", a: "Forelle" },
+                { q: "The hearty, rustic nature of traditional Mosel food was designed to sustain whom?", a: "Workers in the steep vineyards" },
+                { q: "Which of these is NOT a byproduct of viticulture used in Mosel gastronomy?", a: "Grapevine roots" },
+                { q: "The crispness of a dry Riesling provides a textural contrast to what element in fried dishes like schnitzel?", a: "The crispy crust" },
+                { q: "The aromatic essence of the Riesling grape can be captured in which local spirit?", a: "Tresterbrand" },
+                { q: "What is the German term for wheat beer, another common style found in the region?", a: "Hefeweizen" },
+                { q: "The 'Debbe' in Debbekoche refers to what?", a: "The cast-iron pot it's cooked in" },
+                { q: "A wine-braised onion stew with pork or beef is known as:", a: "Zwiwwelfleisch" },
+                { q: "Which of these ingredients provides the 'Earth' (Äd) component in 'Himmel un Äd'?", a: "Potatoes" },
+                { q: "The versatility of Mosel Riesling is due to its spectrum of sweetness levels and what other key structural component?", a: "High acidity" },
+                { q: "Which of these pairings is the most classic example of contrasting flavors?", a: "Sweet Auslese with salty blue cheese" },
+                { q: "The Red Vineyard Peach is often used to make what products, besides being eaten fresh?", a: "Liqueurs and desserts" },
+                { q: "What is the German term for pike-perch?", a: "Zander" },
+                { q: "The use of wine directly in cooking, as in Zwiwwelfleisch, is a hallmark of what?", a: "Local Mosel cuisine" },
+                { q: "Which of these is NOT a typical pairing for a dry Mosel Riesling?", a: "A rich, creamy dessert" },
+                { q: "The process of making Tresterbrand is an example of what?", a: "Utilizing byproducts of winemaking" },
+                { q: "The 'Scholes' is another name for which baked potato dish?", a: "Debbekoche" },
+                { q: "The balance of sweetness and acidity in a Spätlese makes it a good match for dishes that have what kind of flavor profile?", a: "Savory and sweet" },
+                { q: "Which of these is a key flavor component of 'Himmel un Äd'?", a: "The savory richness of black pudding" },
+                { q: "What is the most common style of beer found in the Mosel region?", a: "Pilsner" },
+                { q: "The long marination period for Tresterfleisch is crucial for what?", a: "Developing tender texture and deep aroma" },
+                { q: "Which of these is a classic garnish for 'Himmel un Äd'?", a: "Fried onions" },
+                { q: "The term 'vineyard-to-table' ethos in the Mosel refers to what?", a: "The direct incorporation of vineyard products into local cuisine" },
+                { q: "Which of these is NOT a common preparation for Mosel river fish?", a: "Deep-fried in batter" },
+                { q: "The primary purpose of the food in the Mosel was traditionally:", a: "To be hearty and sustaining" },
+                { q: "Which of these ingredients is NOT typically found in Debbekoche?", a: "Sweet potatoes" },
+                { q: "The distillation of Tresterbrand is a way to use what part of the grape harvest?", a: "The pomace left after pressing" },
+                { q: "A Riesling cream sauce is a classic accompaniment for what?", a: "Local river fish" },
+                { q: "Which of these pairings best exemplifies the 'cuts through fat' principle?", a: "Dry Riesling with Debbekoche" },
+                { q: "The traditional cuisine of the Mosel reflects a history of what?", a: "Agricultural self-sufficiency" },
+            ],
+            critic: [
+                { q: "Which producer is considered a 'First Growth' of the Saar, famous for its Scharzhofberger Rieslings?", a: "Egon Müller" },
+                { q: "Which vintage is described as a 'return to a classic, lightweight style' with high, piercing acidity and low alcohol?", a: "2021" },
+                { q: "Which producer, based in Wehlen, is an icon for its long-lived Auslese Goldkapsel from the Sonnenuhr vineyard?", a: "Joh. Jos. Prüm" },
+                { q: "The 2019 vintage is critically acclaimed as a potentially legendary year, producing what style of wines?", a: "Powerful, concentrated, and structured with high acidity" },
+                { q: "Which producer is a benchmark for the Ruwer valley, owning the Abtsberg, Herrenberg, and Bruderberg vineyards as a monopole?", a: "Maximin Grünhaus" },
+                { q: "How is the 2018 vintage generally characterized by critics?", a: "Very hot and dry, leading to ripe, generous, fruit-forward wines" },
+                { q: "Which producer is considered a 'Value Champion', known for their widely available 'Dr. L' Riesling and high-quality single vineyard wines?", a: "Dr. Loosen" },
+                { q: "Which of these is considered a 'Rising Star' known for his Piesporter Goldtröpfchen Kabinett?", a: "Julian Haart" },
+                { q: "The 2015 vintage is hailed as a 'Goldilocks' or benchmark year, producing wines that are:", a: "Ripe, concentrated, and perfectly balanced with power and finesse" },
+                { q: "Which producer, based in Brauneberg, is a 'First Growth' famed for wines from the Juffer Sonnenuhr vineyard?", a: "Fritz Haag" },
+                { q: "The 2010 vintage is known for being unique and extreme, with what defining characteristic?", a: "Record-high, searing acidity and incredible intensity" },
+                { q: "Which 'Rising Star' is known for revitalizing vineyards in Dhron, such as the Hofberg?", a: "A.J. Adam" },
+                { q: "Which vintage was very challenging due to a wet harvest and the threat of the Suzuki fruit fly, requiring rapid, selective picking?", a: "2014" },
+                { q: "Which producer is an icon of Graach, particularly for wines from the Domprobst vineyard?", a: "Willi Schaefer" },
+                { q: "The 2007 vintage is considered a classic, textbook example of great Mosel Riesling, producing wines that are:", a: "Elegant, balanced, and intensely aromatic with great purity" },
+                { q: "Which producer, known for his three-star capsule system, has a massive estate covering many top vineyards?", a: "Markus Molitor" },
+                { q: "Which of these is a 'Value Champion' from the Saar, known for a staunchly traditional, feinherb style?", a: "Hofgut Falkenstein" },
+                { q: "The 2020 vintage is noted for being warm and dry but more balanced than 2018/2019, resulting in wines with:", a: "Clarity and precision" },
+                { q: "Which 'Rising Star' is known for their work in Traben-Trarbach, particularly the Enkircher Ellergrub vineyard?", a: "Weiser-Künstler" },
+                { q: "The 2006 vintage was difficult for dry wines but excellent for what style, due to widespread botrytis?", a: "BA and TBA" },
+                { q: "Which producer, though based in Rheinhessen, produces some of the Mosel's most sought-after GGs and Kabinetts from the Schubertslay vineyard?", a: "Klaus Peter Keller" },
+                { q: "The 2017 vintage was marked by what event, which dramatically reduced yields but concentrated the remaining fruit?", a: "Severe spring frost" },
+                { q: "Which 'Value Champion' is known for their classic, refined Rieslings from Zeltingen?", a: "Selbach-Oster" },
+                { q: "Which vintage is described as a classic 'acid' year, producing racy, focused wines with pronounced minerality?", a: "2008" },
+                { q: "Which 'Rising Star' is known for working with extremely old, ungrafted vines in Leiwen, including the Maximin Herrenberg '1896' plot?", a: "Carl Loewen" },
+                { q: "The 2022 vintage was hot and dry, but surprisingly produced wines that were:", a: "Elegant and fresh" },
+                { q: "Which of these is NOT considered one of the Mosel's 'First Growth' benchmark producers?", a: "Dr. Loosen" },
+                { q: "The 2004 vintage is considered a benchmark for what style of Mosel wine?", a: "Classic, lightweight, elegant, and mineral-driven" },
+                { q: "Which producer is a 'Rising Star' from Wintrich?", a: "Max Kilburg" },
+                { q: "The 2005 vintage was particularly successful for which style of wines?", a: "Sweeter Prädikate (Auslese and up)" },
+                { q: "Which producer is a 'Value Champion' based in Mülheim?", a: "Max Ferd. Richter" },
+                { q: "The 2011 vintage produced wines that were generally:", a: "Rich, full-bodied, and accessible with ripe fruit" },
+                { q: "The critical reputation of Mosel Riesling is built on its ability to combine flavor concentration with what?", a: "Remarkably low alcohol levels" },
+                { q: "Which of these is NOT a 'Rising Star' of the Mosel?", a: "Fritz Haag" },
+                { q: "The 2016 vintage was very mixed due to a wet spring and summer, meaning quality depended heavily on what?", a: "Producer skill and diligence" },
+                { q: "Which of these is considered a 'First Growth' of the Mosel?", a: "Willi Schaefer" },
+                { q: "The 2013 vintage was very late and cool, producing wines that are:", a: "Lean and high-acid with intense citrus character" },
+                { q: "The term 'laser-like focus' is often used by critics to describe what characteristic of Mosel Riesling?", a: "Its purity and precision" },
+                { q: "Which of these is a 'First Growth' producer?", a: "Maximin Grünhaus" },
+                { q: "The 2009 vintage was warm and ripe, similar to 2011, producing wines with:", a: "Generous fruit and softer acidity" },
+                { q: "Which of these is a 'Value Champion' producer?", a: "Selbach-Oster" },
+                { q: "The 2023 vintage is described as producing what style of wines?", a: "Juicy, fruit-forward, and accessible" },
+                { q: "The exceptional aging potential of top Mosel Rieslings is primarily due to their:", a: "High acidity" },
+                { q: "Which of these is a 'Rising Star' producer?", a: "Carl Loewen" },
+                { q: "The 2012 vintage is not on the provided chart, but based on surrounding years, a balanced year would likely be described as:", a: "Classic, with purity and structure" },
+                { q: "Which of these is a 'First Growth' producer?", a: "Joh. Jos. Prüm" },
+                { q: "A key challenge for producers in a hot vintage like 2018 is:", a: "Retaining sufficient acidity" },
+                { q: "Which of these is a 'Value Champion' producer?", a: "Max Ferd. Richter" },
+                { q: "The 'new wave' of Mosel producers is often focused on what style of wine?", a: "Dry wines and reclaiming historic sites" },
+                { q: "A key challenge for producers in a cool, wet vintage like 2021 is:", a: "High disease pressure and low yields" },
+            ]
+        };
+
+        const mainMenu = document.getElementById('main-menu');
+        const gameScreen = document.getElementById('game-screen');
+        const modalContainer = document.getElementById('modal-container');
+        const modalContentWrapper = document.getElementById('modal-content-wrapper');
+        const aiSettingsBtn = document.getElementById('ai-settings-btn');
+
+        let currentModule;
+        let currentQuestionIndex;
+        let score;
+        let questions = [];
+        let userTimeline = [];
+        let historianAvailableEvents = [];
+        let flashcardDeck = [];
+        let currentFlashcardIndex = 0;
+        let userApiKey = localStorage.getItem('geminiApiKey') || '';
+
+        // --- Event Listeners ---
+        document.querySelectorAll('.module-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const module = button.dataset.module;
+                if (module === 'flashcard') {
+                    showFlashcardTopicSelection();
+                } else {
+                    showInstructionalModal(module);
+                }
+            });
+        });
+
+        aiSettingsBtn.addEventListener('click', showAiSettingsModal);
+    	
+        // --- Modal Functions ---
+        function showModal(content) {
+            modalContentWrapper.innerHTML = content;
+            modalContainer.classList.remove('hidden');
+        }
+
+        function hideModal() {
+            modalContainer.classList.add('hidden');
+            modalContentWrapper.innerHTML = '';
+        }
+    	
+        function showWelcomeModal() {
+            if (sessionStorage.getItem('welcomed')) return;
+            const content = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-purple-400">Welcome to the Gauntlet!</h2>
+                    <p class="mb-4 text-gray-300">This is "Mosel: A Wine Master's Challenge," an interactive study game designed for advanced wine students.</p>
+                    <p class="mb-6 text-gray-300">Test your knowledge across history, terroir, grapes, law, and more. All questions are derived from a comprehensive research document on the region. Good luck!</p>
+                    <button onclick="closeWelcomeModal()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Begin</button>
+                </div>
+            `;
+            showModal(content);
+        }
+
+        function closeWelcomeModal() {
+            sessionStorage.setItem('welcomed', 'true');
+            hideModal();
+        }
+
+        function showInstructionalModal(module) {
+            currentModule = module;
+            const moduleData = gameData[module];
+            const content = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-purple-400">${moduleData.title}</h2>
+                    <p class="mb-6 text-gray-300">${moduleData.instructions}</p>
+                    <button onclick="startGame()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Start Challenge</button>
+                </div>
+            `;
+            showModal(content);
+        }
+
+        function showEndGameModal() {
+            const moduleData = gameData[currentModule];
+            const content = `
+                <div class="p-6 text-center">
+                    <h2 class="text-2xl font-bold mb-4 text-purple-400">Module Complete!</h2>
+                    <p class="text-lg mb-2 text-gray-300">You completed "${moduleData.title}".</p>
+                    <p class="text-4xl font-bold mb-6">Score: ${score} / ${questions.length}</p>
+                    <div class="flex space-x-4">
+                        <button onclick="startGame()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Keep Going</button>
+                        <button onclick="returnToMenu()" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Main Menu</button>
+                    </div>
+                </div>
+            `;
+            showModal(content);
+        }
+
+        function showAiSettingsModal() {
+            const content = `
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-purple-400">AI Settings</h2>
+                        <button onclick="hideModal()" class="text-gray-400 hover:text-white">&times;</button>
+                    </div>
+                    <p class="mb-4 text-gray-300">To use the AI-powered features, please enter your Google AI Studio API key. You can get a key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-purple-400 hover:underline">aistudio.google.com/app/apikey</a>.</p>
+                    <p class="text-sm text-yellow-400 mb-4">Security Reminder: Treat your API key like a password. It is saved in your browser's local storage for convenience but is not transmitted anywhere else.</p>
+                    <div class="mb-4">
+                        <label for="api-key-input" class="block text-sm font-medium text-gray-300 mb-1">Google AI API Key</label>
+                        <input type="password" id="api-key-input" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" value="${userApiKey}">
+                    </div>
+                    <button onclick="saveApiKey()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Save and Close</button>
+                </div>
+            `;
+            showModal(content);
+        }
+    	
+        function saveApiKey() {
+            userApiKey = document.getElementById('api-key-input').value;
+            localStorage.setItem('geminiApiKey', userApiKey);
+            hideModal();
+        }
+
+        // --- Game Flow ---
+        function startGame() {
+            hideModal();
+            mainMenu.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            score = 0;
+            currentQuestionIndex = 0;
+
+            if (currentModule === 'historian') {
+                questions = shuffleArray([...gameData.historian.questions]).slice(0, 4); // Historian has a fixed number of questions
+                loadHistorianQuestion();
+            } else {
+                const allModuleQuestions = [...gameData[currentModule].questions];
+                const correctLog = JSON.parse(localStorage.getItem('correctlyAnsweredQuestions')) || {};
+                const correctQuestionsForModule = correctLog[currentModule] || [];
+
+                let availableQuestions = allModuleQuestions.filter(q => !correctQuestionsForModule.includes(q.q));
+
+                if (availableQuestions.length === 0 && allModuleQuestions.length > 0) {
+                    const masteryContent = `
+                        <div class="p-6 text-center">
+                            <h2 class="text-2xl font-bold mb-4 text-green-400">Module Mastered!</h2>
+                            <p class="mb-4 text-gray-300">Congratulations! You've correctly answered all questions in this module. Your progress will be reset so you can continue to sharpen your knowledge.</p>
+                            <button onclick="resetAndStartGame()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Play Again</button>
+                        </div>
+                    `;
+                    showModal(masteryContent);
+                    return; 
+                }
+            	
+                questions = shuffleArray(availableQuestions).slice(0, 10);
+                loadQuestion();
+            }
+        }
+
+        function resetAndStartGame() {
+            let correctLog = JSON.parse(localStorage.getItem('correctlyAnsweredQuestions')) || {};
+            correctLog[currentModule] = [];
+            localStorage.setItem('correctlyAnsweredQuestions', JSON.stringify(correctLog));
+            startGame();
+        }
+
+        function returnToMenu() {
+            hideModal();
+            gameScreen.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+            gameScreen.innerHTML = '';
+            checkGlobalMastery();
+        }
+
+        // --- Multiple Choice Logic ---
+        function loadQuestion() {
+            if (questions.length === 0 || currentQuestionIndex >= questions.length) {
+                showEndGameModal();
+                return;
+            }
+
+            const q = questions[currentQuestionIndex];
+            const options = shuffleArray([q.a, ...q.o]);
+        	
+            gameScreen.innerHTML = `
+                <div class="w-full max-w-3xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <button onclick="returnToMenu()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-sm">← Menu</button>
+                        <p class="text-right text-gray-400">${currentQuestionIndex + 1} / ${questions.length} | Score: ${score}</p>
+                    </div>
+                    <div class="bg-gray-800 p-8 rounded-lg">
+                        <p class="text-xl md:text-2xl font-medium mb-6">${q.q}</p>
+                        <div class="space-y-4">
+                            ${options.map(option => `
+                                <button class="answer-btn block w-full text-left bg-gray-700 p-4 rounded-lg hover:bg-purple-700 transition-colors duration-200" onclick="checkAnswer('${option.replace(/'/g, "\\'")}')">
+                                    ${option}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div id="feedback-container" class="mt-6"></div>
+                    </div>
+                </div>
+            `;
+        }
+    	
+        function nextQuestion() {
+            currentQuestionIndex++;
+            loadQuestion();
+        }
+    	
+        function generateAiButtonHtml(question, isCorrect) {
+            if (!question.subjectType || !question.subjectName) {
+                return '';
+            }
+        	
+            let buttonText = isCorrect ? `➡️ Dive Deeper on ${question.subjectName}` : `💡 Learn More about ${question.subjectName}`;
+            if (question.subjectType === 'dish' || question.subjectType === 'wine_pairing') {
+                 buttonText = isCorrect ? `➡️ Explain the Pairing for ${question.subjectName}` : `💡 Learn about Pairing with ${question.subjectName}`;
+            }
+
+            return `<button onclick="handleAiRequest('${question.subjectType}', '${question.subjectName.replace(/'/g, "\\'")}')" class="mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded text-sm">${buttonText}</button>`;
+        }
+
+        function checkAnswer(selectedOption) {
+            const q = questions[currentQuestionIndex];
+            const isCorrect = selectedOption === q.a;
+            const feedbackContainer = document.getElementById('feedback-container');
+        	
+            let feedbackHtml = '';
+            if (isCorrect) {
+                score++;
+                const questionText = q.q;
+                let correctLog = JSON.parse(localStorage.getItem('correctlyAnsweredQuestions')) || {};
+                if (!correctLog[currentModule]) {
+                    correctLog[currentModule] = [];
+                }
+                if (!correctLog[currentModule].includes(questionText)) {
+                    correctLog[currentModule].push(questionText);
+                }
+                localStorage.setItem('correctlyAnsweredQuestions', JSON.stringify(correctLog));
+
+                feedbackHtml = `<div class="p-4 rounded-lg bg-green-900 border border-green-700">
+                                    <p class="font-bold text-green-300">Correct!</p>
+                                    <p class="text-green-400">${q.a}</p>
+                                    ${generateAiButtonHtml(q, true)}
+                                </div>`;
+            } else {
+                feedbackHtml = `<div class="p-4 rounded-lg bg-red-900 border border-red-700">
+                                    <p class="font-bold text-red-300">Incorrect.</p>
+                                    <p class="text-red-400">The correct answer was: ${q.a}</p>
+                                     ${generateAiButtonHtml(q, false)}
+                                </div>`;
+            }
+
+            feedbackContainer.innerHTML = feedbackHtml;
+            document.querySelectorAll('.answer-btn').forEach(btn => {
+                btn.disabled = true;
+                if(btn.innerText === q.a) {
+                    btn.classList.remove('hover:bg-purple-700');
+                    btn.classList.add('bg-green-700');
+                }
+            });
+            feedbackContainer.innerHTML += `<button onclick="nextQuestion()" class="mt-4 w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Continue</button>`;
+        }
+    	
+        // --- Historian's Scroll Logic ---
+        function loadHistorianQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                showEndGameModal();
+                return;
+            }
+
+            const q = questions[currentQuestionIndex];
+            userTimeline = [];
+        	
+            const eventsWithIds = q.events.map((event, index) => ({ ...event, id: `${currentQuestionIndex}-${index}` }));
+            historianAvailableEvents = shuffleArray(eventsWithIds);
+
+            gameScreen.innerHTML = `
+                <div class="w-full max-w-4xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <button onclick="returnToMenu()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-sm">← Menu</button>
+                        <p class="text-center text-gray-400">Question ${currentQuestionIndex + 1} / ${questions.length} | Score: ${score}</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <p class="text-xl text-center font-medium mb-6">${q.question}</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h3 class="font-bold text-lg mb-2 text-purple-400 text-center">Available Events</h3>
+                                <div id="available-events" class="space-y-2">
+                                    ${historianAvailableEvents.map(event => `
+                                        <button data-id="${event.id}" class="timeline-item w-full text-left bg-gray-700 p-3 rounded hover:bg-purple-800 transition-colors duration-200">
+                                            ${event.text}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg mb-2 text-purple-400 text-center">Your Timeline (Earliest to Latest)</h3>
+                                <div id="user-timeline" class="space-y-2 bg-gray-900 p-3 rounded-lg min-h-[200px]"></div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-6">
+                            <button id="submit-timeline" class="bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-lg" onclick="checkTimeline()">Submit</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        	
+            document.querySelectorAll('#available-events .timeline-item').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const eventId = e.currentTarget.dataset.id;
+                    const event = historianAvailableEvents.find(ev => ev.id === eventId);
+                    if (event && !userTimeline.some(e => e.id === event.id)) {
+                        userTimeline.push(event);
+                        e.currentTarget.classList.add('selected', 'opacity-50', 'cursor-not-allowed');
+                        e.currentTarget.disabled = true;
+                        renderUserTimeline();
+                    }
+                });
+            });
+        }
+    	
+        function renderUserTimeline() {
+            const timelineContainer = document.getElementById('user-timeline');
+            timelineContainer.innerHTML = userTimeline.map((event, index) => `
+                <div class="bg-purple-900 p-3 rounded flex items-center justify-between">
+                    <span>${index + 1}. ${event.text}</span>
+                    <button class="text-red-400 hover:text-red-200 font-bold" onclick="removeFromTimeline('${event.id}')">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function removeFromTimeline(eventId) {
+            const indexToRemove = userTimeline.findIndex(event => event.id === eventId);
+
+            if (indexToRemove > -1) {
+                userTimeline.splice(indexToRemove, 1);
+                const buttonToReEnable = document.querySelector(`#available-events .timeline-item[data-id="${eventId}"]`);
+                if (buttonToReEnable) {
+                    buttonToReEnable.disabled = false;
+                    buttonToReEnable.classList.remove('selected', 'opacity-50', 'cursor-not-allowed');
+                }
+                renderUserTimeline();
+            }
+        }
+
+        function checkTimeline() {
+            const q = questions[currentQuestionIndex];
+            const correctTimeline = [...q.events].sort((a, b) => a.date - b.date);
+            let isCompletelyCorrect = userTimeline.length === correctTimeline.length;
+        	
+            if (isCompletelyCorrect) {
+                for (let i = 0; i < correctTimeline.length; i++) {
+                    if (userTimeline[i].text !== correctTimeline[i].text) {
+                        isCompletelyCorrect = false;
+                        break;
+                    }
+                }
+            }
+        	
+            if(isCompletelyCorrect) {
+                score++;
+            }
+
+            const userTimelineHtml = userTimeline.map((event, i) => {
+                const isEventInCorrectPosition = correctTimeline[i] && correctTimeline[i].text === event.text;
+                const borderColor = isEventInCorrectPosition ? 'border-green-500' : 'border-red-500';
+                return `<li class="p-2 bg-gray-700 rounded border-2 ${borderColor}">${event.text}</li>`;
+            }).join('');
+
+            const correctTimelineHtml = correctTimeline.map(e => 
+                `<li class="p-2 bg-gray-700 rounded border-2 border-green-500">${e.text} <span class="text-gray-400 text-sm">(${e.date})</span></li>`
+            ).join('');
+        	
+            const feedbackContent = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4 ${isCompletelyCorrect ? 'text-green-400' : 'text-yellow-400'}">${isCompletelyCorrect ? 'Perfect!' : 'Review Your Timeline'}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-bold text-lg mb-2 text-purple-400">Your Timeline</h3>
+                            <ol class="list-decimal list-inside space-y-2">
+                                ${userTimelineHtml}
+                            </ol>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2 text-purple-400">Correct Timeline</h3>
+                            <ol class="list-decimal list-inside space-y-2">
+                                ${correctTimelineHtml}
+                            </ol>
+                        </div>
+                    </div>
+                    <button onclick="nextHistorianQuestion()" class="mt-6 w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Continue</button>
+                </div>
+            `;
+            showModal(feedbackContent);
+        }
+
+        function nextHistorianQuestion() {
+            hideModal();
+            currentQuestionIndex++;
+            loadHistorianQuestion();
+        }
+
+        // --- Mastery Logic ---
+        function checkGlobalMastery() {
+            if (sessionStorage.getItem('globalMasteryAcknowledged')) {
+                return;
+            }
+
+            const modulesToMaster = ['terroir', 'ampelographer', 'lawmaker', 'gastronome', 'critic'];
+            const correctLog = JSON.parse(localStorage.getItem('correctlyAnsweredQuestions')) || {};
+        	
+            let allMastered = true;
+            for (const module of modulesToMaster) {
+                const totalQuestions = gameData[module].questions.length;
+                const correctlyAnswered = (correctLog[module] || []).length;
+                if (correctlyAnswered < totalQuestions) {
+                    allMastered = false;
+                    break;
+                }
+            }
+
+            if (allMastered) {
+                showGlobalMasteryModal();
+            }
+        }
+
+        function showGlobalMasteryModal() {
+            const content = `
+                <div class="p-6 text-center">
+                    <h2 class="text-2xl font-bold mb-4 text-purple-400">Congratulations, Wine Master!</h2>
+                    <p class="mb-4 text-gray-300">You have demonstrated exceptional knowledge by correctly answering every question across all core modules. You have truly mastered the Mosel!</p>
+                    <p class="mb-6 text-gray-300">To keep your expertise sharp, continue to practice with the <strong>Flashcard Study</strong> decks.</p>
+                    <button onclick="closeGlobalMasteryModal()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Continue</button>
+                </div>
+            `;
+            showModal(content);
+        }
+
+        function closeGlobalMasteryModal() {
+            sessionStorage.setItem('globalMasteryAcknowledged', 'true');
+            hideModal();
+        }
+
+        // --- Flashcard Logic ---
+        function showFlashcardTopicSelection() {
+            const topics = Object.keys(flashcardData); // Use flashcardData keys
+            const content = `
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-purple-400">Build Your Flashcard Deck</h2>
+                    <p class="mb-6 text-gray-300">Select the topics you want to study. These decks cover the entire source document.</p>
+                    <div id="flashcard-topics" class="space-y-2 mb-4">
+                        ${topics.map(topic => `
+                            <label class="flex items-center bg-gray-700 p-3 rounded-lg hover:bg-gray-600 cursor-pointer">
+                                <input type="checkbox" class="form-checkbox h-5 w-5 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500" data-topic="${topic}">
+                                <span class="ml-3 text-white">${gameData[topic].title}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                     <label class="flex items-center bg-gray-700 p-3 rounded-lg hover:bg-gray-600 cursor-pointer mb-6">
+                        <input type="checkbox" id="select-all-topics" class="form-checkbox h-5 w-5 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500">
+                        <span class="ml-3 text-white font-bold">Select All</span>
+                    </label>
+                    <button onclick="startFlashcardSession()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Start Studying</button>
+                </div>
+            `;
+            showModal(content);
+        	
+            document.getElementById('select-all-topics').addEventListener('change', (e) => {
+                document.querySelectorAll('#flashcard-topics input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = e.target.checked;
+                });
+            });
+        }
+
+        function startFlashcardSession() {
+            flashcardDeck = [];
+            const selectedTopics = Array.from(document.querySelectorAll('#flashcard-topics input:checked')).map(cb => cb.dataset.topic);
+
+            if (selectedTopics.length === 0) {
+                // Using a modal instead of alert()
+                showModal(`<div class="p-6 text-center">
+                    <p class="text-lg text-yellow-400 mb-4">Please select at least one topic.</p>
+                    <button onclick="showFlashcardTopicSelection()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Go Back</button>
+                </div>`);
+                return;
+            }
+
+            selectedTopics.forEach(topic => {
+                if (flashcardData[topic]) {
+                    flashcardDeck.push(...flashcardData[topic]);
+                }
+            });
+
+            flashcardDeck = shuffleArray(flashcardDeck);
+            currentFlashcardIndex = 0;
+            hideModal();
+            mainMenu.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            loadFlashcard();
+        }
+
+        function loadFlashcard() {
+            if (flashcardDeck.length === 0) {
+                gameScreen.innerHTML = `<div class="text-center">
+                    <p class="text-2xl mb-4">No topics selected.</p>
+                    <button onclick="returnToMenu()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Main Menu</button>
+                </div>`;
+                return;
+            }
+            const card = flashcardDeck[currentFlashcardIndex];
+            gameScreen.innerHTML = `
+                <div class="w-full max-w-2xl flex flex-col items-center">
+                    <p class="text-gray-400 mb-4">${currentFlashcardIndex + 1} / ${flashcardDeck.length}</p>
+                    <div class="flashcard-container w-full h-80 mb-6">
+                        <div class="flashcard" onclick="this.classList.toggle('is-flipped')">
+                            <div class="flashcard-face flashcard-front text-2xl font-semibold text-center">${card.q}</div>
+                            <div class="flashcard-face flashcard-back text-xl text-center overflow-y-auto">${card.a}</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between w-full">
+                        <button id="prev-card" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded">&larr; Previous</button>
+                        <button onclick="returnToMenu()" class="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-6 rounded">End Session</button>
+                        <button id="next-card" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded">Next &rarr;</button>
+                    </div>
+                </div>
+            `;
+        	
+            document.getElementById('prev-card').addEventListener('click', () => {
+                if (currentFlashcardIndex > 0) {
+                    currentFlashcardIndex--;
+                    loadFlashcard();
+                }
+            });
+            document.getElementById('next-card').addEventListener('click', () => {
+                if (currentFlashcardIndex < flashcardDeck.length - 1) {
+                    currentFlashcardIndex++;
+                    loadFlashcard();
+                }
+            });
+        }
+    	
+        // --- AI Integration ---
+        async function handleAiRequest(subjectType, subjectName) {
+            if (!userApiKey) {
+                showModal(`<div class="p-6 text-center">
+                    <h2 class="text-2xl font-bold mb-4 text-yellow-400">API Key Required</h2>
+                    <p class="mb-4 text-gray-300">Please set your Google AI API key in the 'AI Settings' on the main menu to use this feature.</p>
+                    <button onclick="hideModal()" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Close</button>
+                </div>`);
+                return;
+            }
+
+            let prompt;
+            let title;
+            const region = "Mosel";
+
+            switch (subjectType) {
+                case 'clone':
+                case 'grape':
+                    title = `Ampelography Profile: ${subjectName}`;
+                    prompt = `You are a master ampelographer and wine educator with a specialization in ${region}. Your task is to profile the grape or clone: ${subjectName}. Your response must follow this strict pyramid of importance: 1. The subject's specific expression and role within ${region}. 2. Its general viticultural characteristics as they manifest in ${region}'s climate. 3. Its history within the region. Your entire response must be framed through the lens of ${region}. Synthesize information from authoritative sources, but always prioritize the context of ${region}. Structure your response with the following sections: Overview and History in ${region}, Viticultural Characteristics in ${region}, and Typical ${region} Wine Profile. Format the output in simple HTML.`;
+                    break;
+                case 'wine':
+                case 'producer':
+                case 'vintage':
+                case 'place':
+                case 'wine_style':
+                    title = `Critic's Focus: ${subjectName}`;
+                    prompt = `You are a world-renowned wine critic specializing exclusively in the wines of ${region}. Your task is to write a professional profile for the following iconic ${region} topic: ${subjectName}. Your analysis must adhere to a strict pyramid of importance: 1) The specific subject's style or character. 2) The character of its specific appellation within ${region}. 3) The general characteristics of ${region}. Do not mention wines from other regions unless making a direct, essential stylistic comparison. Synthesize information from authoritative sources like JancisRobinson.com, Vinous, and Decanter, but ensure the final note is your own expert synthesis. Format in simple HTML.`;
+                    break;
+                case 'dish':
+                case 'wine_pairing':
+                    title = `Gastronomic Pairing: ${subjectName}`;
+                    prompt = `You are a master sommelier and food theorist specializing in the cuisine and wine of ${region}. Your task is to explain the classic wine pairing for the dish: ${subjectName}. Your explanation must follow this strict pyramid of importance: 1. The specific characteristics of the dish as found in the region. 2. The typical profile of a ${region} wine that pairs with it. 3. The underlying gastronomic principles (complement, contrast, texture) that make the pairing successful within the context of the region's culture. Synthesize information from expert sources, but frame your entire response within the context of ${region}. Format in simple HTML.`;
+                    break;
+                case 'ingredient':
+                case 'gastronomy':
+                    title = `Ingredient Focus: ${subjectName}`;
+                    prompt = `You are a food and wine expert specializing in the cuisine of ${region}. Your task is to provide a detailed overview of the ingredient: ${subjectName}. Your response must follow this strict pyramid of importance: 1. How this ingredient is used in the local cuisine of ${region}. 2. Its typical flavor and aromatic profile. 3. How its profile might be reflected in or complement the local wines, but do not focus on specific pairings unless it is intrinsic to the ingredient itself. Synthesize from authoritative sources. Format in simple HTML.`;
+                    break;
+                case 'beverage':
+                    title = `Beverage Profile: ${subjectName}`;
+                    prompt = `You are an expert on the spirits and beers of Germany, with a specialization in ${region}. Your task is to provide a detailed overview of ${subjectName}. Your response must follow this strict pyramid of importance: 1. How ${subjectName} is made and consumed specifically within ${region}. 2. Its key ingredients and typical flavor profile. 3. Its cultural significance in ${region}. Do not focus on wine pairings unless it is a key part of its consumption. Synthesize information from authoritative sources. Format in simple HTML.`;
+                    break;
+                default:
+                    title = `Expert Overview: ${subjectName}`;
+                    prompt = `You are a wine and food expert specializing in ${region}. Provide a concise and informative overview of the following topic: ${subjectName}, ensuring your response is strictly relevant to its context within ${region}. Format in simple HTML.`;
+            }
+        	
+            showModal(`<div class="p-6 text-center">
+                <h2 class="text-2xl font-bold mb-4 text-purple-400">Generating AI Response...</h2>
+                <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
+                <p class="mt-4 text-gray-400">Please wait, contacting the master sommelier...</p>
+            </div>`);
+
+            try {
+                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${userApiKey}`;
+            	
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error.message || `API request failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+            	
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    const aiContent = `
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-2xl font-bold text-purple-400">${title}</h2>
+                                <button onclick="hideModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                            </div>
+                            <div class="prose prose-invert prose-purple max-w-none">${text.replace(/\n/g, '<br>')}</div>
+                        </div>`;
+                    showModal(aiContent);
+                } else {
+                     throw new Error("Invalid response structure from API.");
+                }
+
+            } catch (error) {
+                console.error("AI Generation Error:", error);
+                const errorContent = `
+                    <div class="p-6">
+                        <h2 class="text-2xl font-bold mb-4 text-red-400">Error</h2>
+                        <p class="mb-4 text-gray-300">Could not generate AI response. Please check your API key and network connection.</p>
+                        <p class="text-sm text-gray-500 bg-gray-900 p-2 rounded">${error.message}</p>
+                        <button onclick="hideModal()" class="mt-4 w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Close</button>
+                    </div>`;
+                showModal(errorContent);
+            }
+        }
+
+        // --- Utility Functions ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // --- Initial Load ---
+        window.onload = showWelcomeModal;
+
+    </script>
+</body>
+</html>
